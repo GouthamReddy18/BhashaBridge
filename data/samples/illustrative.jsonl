@@ -1,0 +1,2 @@
+{"schema_version":"1.0","id":"illustrative-001","text":"nenu college ki vellanu","reference_en":null,"tokens":[],"ambiguities":[],"annotator_notes":"Illustrative prompt only; no validated annotation or reference translation.","split":"illustrative"}
+{"schema_version":"1.0","id":"illustrative-002","text":"bank daggara wait cheyyi","reference_en":null,"tokens":[],"ambiguities":[],"annotator_notes":"Illustrative prompt only; ambiguity is not annotated as a gold label.","split":"illustrative"}
