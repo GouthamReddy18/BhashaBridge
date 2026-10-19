@@ -22,11 +22,11 @@ Use the existing labels exactly:
 - `OTHER`: a supported language/script category outside the listed primary labels, with evidence recorded in notes.
 - `UNKNOWN`: insufficient evidence for a language label. Unknown is not a semantic ambiguity label.
 
-Names, abbreviations, and unfamiliar spellings may remain `UNKNOWN`. Do not force a label. Preserve Telugu-script text as written. Keep punctuation, numeric strings, emoji, and other Unicode symbols as tokenizer emits them; do not convert them into words.
+For mixed-language annotation, label each token independently. Mark a Latin token `TELUGU_ROMANIZED` only when the annotator has sufficient evidence it represents Telugu; mark English only when supported by context or a source. Borrowed words can be difficult to assign: record the convention/source used and use `UNKNOWN` when language identity is not defensible. Do not treat Latin script alone as Telugu evidence. Keep abbreviations and names `UNKNOWN` unless independently supported. Numeric tokens use `NUMBER`; punctuation and standalone symbols follow the tokenizer/classifier labels; emoji are preserved and labeled according to the current classifier output (often `OTHER` or `PUNCTUATION`), without interpreting them as words. Do not force a label. Preserve Telugu-script text as written. Keep punctuation, numeric strings, emoji, and other Unicode symbols as tokenizer emits them; do not convert them into words.
 
 ## Interpretation and ambiguity
 
-Only enter `romanized_interpretation` or `telugu_script_equivalent` when the annotator has a defensible source or knowledge and records the provenance. Otherwise use `null`. A script equivalent is transliteration; it is not automatically a translation.
+Only enter `romanized_interpretation` or `telugu_script_equivalent` when the annotator has a defensible source or knowledge and records field-level provenance. Otherwise use `null`. A script equivalent is transliteration; it is not automatically a translation. If a Romanized spelling has multiple plausible readings, preserve the spelling, list only sourced/documented alternatives, explain the uncertainty, and abstain from choosing unless evidence supports one. Never invent transliterations or confidence.
 
 Use `ambiguity: null` when no semantic ambiguity has been established. For a genuine candidate set, list at least two distinct `candidate_id` values, each with a concise meaning and source. Use `status: detected` when alternatives are documented but context has not justified selection; `resolved` only when evidence supports one listed candidate; and `abstained` when evidence is insufficient or conflicting. Detected/abstained records have `selected_candidate: null`. Explain actual evidence and uncertainty. Do not copy the illustrative Phase 3 fixture as verified Telugu-English evidence.
 
@@ -42,7 +42,13 @@ Every row records `source_type` and `annotation_provenance.method` plus `.detail
 
 New rows are `annotation_status: draft`. Do not add reviewer identity or date unless supplied by a real reviewer and review actually occurred. To mark a record reviewed, a reviewer must check the source text, normalization, tokenization/labels, every optional linguistic annotation and its evidence, and resolve or record disagreements. Then set both annotation and review statuses to `reviewed`, supply the reviewer identifier/pseudonym and ISO review date, and retain notes. Metadata consistency is not proof that a real review happened; maintain an audit trail outside the validator too.
 
-When annotators disagree, preserve the alternatives and notes; do not silently majority-vote or erase uncertainty. Use `disputed` review status where needed and do not place unresolved records in evaluation data.
+When annotators disagree, preserve the alternatives and notes; do not silently majority-vote or erase uncertainty. Use `disputed` review status where needed and do not place unresolved records in evaluation data. Resolve disagreements through a documented adjudication by a designated reviewer; record the actual reviewer, date, evidence, and outcome. If unresolved, retain the disagreement and abstain.
+
+For ambiguity, annotate a record only when at least two plausible interpretations have documented provenance. Record candidate IDs, meanings, sources, actual contextual evidence, and a rule/source identifier. Use `detected` when alternatives are established but no selection is justified; `resolved` only when the evidence supports one listed candidate; use `abstained` when evidence is insufficient or conflicting. In both non-resolved states selection is null. The validator checks consistency but cannot prove the interpretations are correct or that review occurred.
+
+A reference translation is a reviewed English rendering of the source utterance, not a gloss, transliteration, machine suggestion, or paraphrase supplied without review. Record its human or human-and-machine origin, field review status, reviewer metadata, and source/reference identifier. The schema validator checks these claims for consistency, not truth.
+
+For future semantic-preservation annotation, a proposed pilot rubric should compare source and output for (1) core meaning, (2) entities and their roles, (3) negation, (4) tense/aspect where applicable, (5) communicative intent, and (6) important contextual information. Annotators should mark each dimension preserved, changed, omitted, added, or not assessable and cite evidence. This is a proposed protocol requiring pilot testing and inter-annotator review; it is not a validated evaluation method.
 
 ## Splits and leakage
 
