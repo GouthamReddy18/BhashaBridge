@@ -1,13 +1,11 @@
-# References and technical investigation
+# IndicLID technical investigation
 
-Status below reflects an initial review of official project repositories on 2026-10-19; compatibility has not been tested locally.
+Reviewed the official AI4Bharat [IndicLID repository](https://github.com/ai4bharat/IndicLID) and README on 2026-10-19. It describes 22 Indian languages in native and Romanized scripts, with Telugu native (`tel_Telu`), Telugu Latin (`tel_Latn`), English, and Other classes. The model uses native/roman FastText branches and a pretrained language-model branch in a two-stage ensemble.
 
-## Verified repository-level facts
+The README provides model release archives (`indiclid-ftn.zip`, `indiclid-ftr.zip`, `indiclid-bert.zip`) and links to an inference Colab notebook, but does not document a stable pip package or token-level code-mixed interface. The documented training setup installs `fasttext` and `transformers`; the repository inference code imports additional packages including PyTorch and Transformers. BhashaBridge only supports optional local FTN/FTR artifacts through FastText; it does not integrate the BERT fallback. Artifacts must be downloaded manually from official release links. No download occurs at setup or startup. The README states that code and models are MIT licensed.
 
-- AI4Bharat, [IndicLID](https://github.com/ai4bharat/IndicLID). Official README describes identification for 22 Indian languages in native and Romanized text, with English and Other classes. Its described classifier returns language classes for text; token-level predictions for mixed sentences were not verified. An adapter or separate baseline will be needed if it is sentence-level.
-- AI4Bharat, [IndicXlit](https://github.com/AI4Bharat/IndicXlit). Investigation pending: verify checkpoint access, interface, license, dependencies, and Telugu Roman-to-native behavior before adoption.
-- AI4Bharat, [IndicTrans2](https://github.com/AI4Bharat/IndicTrans2). Official repository describes translation for 22 scheduled Indian languages including Telugu, and lists English as a supported language. This does not establish support for Romanized Telugu?English code-mixed input. Test script expectations, model size, license, hardware, and preprocessing before use.
+The paper describes sentence-level classification and its romanized evaluation. Its romanized results are lower than native-script results; these are upstream results on its benchmark, not BhashaBridge measurements. Calling these classifiers one token at a time is an unvalidated adapter experiment, particularly for short Romanized forms and mixed text.
 
-## Research sources to verify before citation
+## Primary paper
 
-The initial source pass has not yet validated bibliographic metadata for foundational code-switching, Romanized normalization/transliteration, word-sense disambiguation, MT evaluation, and explainable NLP papers. Add only primary papers with checked authors, title, year, venue/DOI, and a direct URL. Do not treat repository descriptions or illustrative examples as experimental evidence.
+Madhani, Yash, Mitesh M. Khapra, and Anoop Kunchukuttan. 2023. [Bhasha-Abhijnaanam: Native-script and Romanized Language Identification for 22 Indic Languages](https://aclanthology.org/2023.acl-short.71/). Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics, Volume 2: Short Papers, pages 816-826.

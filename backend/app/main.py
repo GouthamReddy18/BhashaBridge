@@ -1,7 +1,12 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-app = FastAPI(title="BhashaBridge 2.0", version="0.1.0", description="Phase 1 API scaffold; NLP modules are not yet implemented.")
+from app.api.routes.analyze import router as analyze_router
+from app.services.language_identification import configured_model_status
+from app.services.transliteration import configured_transliteration_status
+
+app = FastAPI(title="BhashaBridge 2.0", version="0.3.0", description="Whitespace normalization, Unicode tokenization, and conservative token-level language identification.")
+app.include_router(analyze_router)
 
 class ModuleStatus(BaseModel):
     name: str
@@ -15,16 +20,19 @@ def health() -> dict[str, str]:
 
 @app.get("/ready")
 def readiness() -> dict[str, object]:
-    """Report configured/available modules separately from future work."""
+    """Report baseline and optional pretrained model readiness separately."""
+    model_status = configured_model_status()
+    transliteration_status, transliteration_detail = configured_transliteration_status()
     modules = [
         ModuleStatus(name="api", status="available", detail="FastAPI process is serving requests."),
-        ModuleStatus(name="input_validation", status="configured", detail="Request framework is present; analysis endpoint is not implemented."),
-        ModuleStatus(name="normalization", status="not_implemented", detail="No text transformations are performed."),
-        ModuleStatus(name="tokenization", status="not_implemented", detail="No token analysis endpoint is available."),
-        ModuleStatus(name="language_identification", status="not_implemented", detail="No model or baseline is loaded."),
-        ModuleStatus(name="transliteration", status="not_implemented", detail="No transliteration model is loaded."),
-        ModuleStatus(name="linguistic_analysis", status="not_implemented", detail="POS/NER are not implemented."),
-        ModuleStatus(name="ambiguity_resolution", status="not_implemented", detail="No ambiguity rules or model are implemented."),
+        ModuleStatus(name="input_validation", status="available", detail="Analyze requests validate type, non-empty text, and maximum length."),
+        ModuleStatus(name="normalization", status="available", detail="Whitespace-only normalization is implemented."),
+        ModuleStatus(name="tokenization", status="available", detail="Unicode word and punctuation tokenization is implemented."),
+        ModuleStatus(name="language_identification", status="available", detail="Conservative token-level script/category rules, small seed lexicons, and UNKNOWN abstention are active."),
+        ModuleStatus(name="indic_lid_model", status=model_status.status, detail=model_status.detail),
+        ModuleStatus(name="transliteration", status=transliteration_status, detail=transliteration_detail),
+        ModuleStatus(name="linguistic_analysis", status="not_implemented", detail="POS tagging and NER are not implemented."),
+        ModuleStatus(name="ambiguity_resolution", status="available", detail="One deterministic illustrative fixture rule is active; broader contextual interpretation is not validated."),
         ModuleStatus(name="translation", status="not_implemented", detail="No translation provider is configured."),
         ModuleStatus(name="evaluation", status="not_implemented", detail="No evaluation runner or results exist."),
     ]

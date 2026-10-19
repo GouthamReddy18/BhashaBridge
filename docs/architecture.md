@@ -1,5 +1,36 @@
-# Architecture (planned)
+# Architecture
 
-The target is a React/Vite client and modular FastAPI service. The pipeline will preserve original input and record observable transformations. Proposed stages: validation, tokenization, conservative normalization, token-level language identification, selective transliteration, supported linguistic analysis, ambiguity handling, translation, uncertainty, and trace generation.
+The FastAPI backend exposes `GET /health`, `GET /ready`, and `POST /api/v1/analyze`. The pipeline runs request validation, whitespace normalization, tokenization, token-level language identification, selective transliteration, then ambiguity detection and contextual resolution. It preserves the original request; token offsets are start-inclusive/end-exclusive Python Unicode code-point positions in normalized text.
 
-Phase 1 implements only `/health` and `/ready`. Readiness lists each module with `configured`, `available`, or `not_implemented` status; a running API is not evidence that NLP models are ready. No analysis or translation endpoint is exposed yet.
+When configured, a selective transliteration stage follows language identification. It accepts only tokens whose existing label is `TELUGU_ROMANIZED`; every other label is skipped. Each token gets a trace record with original surface, index, offsets, language label, attempted flag, candidate (only when a valid result was returned), engine ID, status, and reason. Transliteration never replaces the original token or normalized input.
+
+## Language identification
+
+The baseline consumes tokenizer tokens independently and preserves index, surface text, and offsets. It applies deterministic punctuation and Unicode-number rules; detects Telugu-block letters/marks as `TELUGU_SCRIPT` (script evidence only); and uses small documented exact-match Romanized Telugu and English seed lexicons. Unsupported Latin words and abbreviations are `UNKNOWN`. It never uses sentence position to assign labels. It does not emit confidence for rules.
+
+The optional IndicLID FastText adapter is disabled by default and only loads local artifacts explicitly configured through `BHASHABRIDGE_LID_PROVIDER=indic_lid`, `BHASHABRIDGE_INDICLID_FTN_PATH`, and `BHASHABRIDGE_INDICLID_FTR_PATH`. It does not download models. When selected, it submits each token separately to the respective native or roman FastText model, maps the resulting class and score, and abstains below 0.6. The model's returned FastText score is included only for model predictions; it is not a calibrated probability. Per-token application is an unvalidated adaptation of a sentence-level classifier.
+
+Readiness distinguishes the implemented baseline from the optional model (`not_configured`, `configured`, `not_installed`, `available`, or `unavailable`). Overall readiness remains degraded because other pipeline stages are not implemented.
+
+## Analyze API
+
+Request JSON: `{"text":"nenu college ki vellanu"}`. Response retains `original_text`, `normalized_text`, `tokens`, and `modules`. Each token retains its previous fields and adds `language` with `label`, `method`, and `evidence`; `confidence` appears only for optional model output. See the endpoint OpenAPI schema for the complete response.
+
+The response also includes transliterations, aligned one-to-one with tokens. Status values are skipped, disabled, succeeded, failed, and unavailable. The environment setting BHASHABRIDGE_TRANSLITERATION_ENABLED defaults to false. If enabled without an explicitly supplied verified offline engine, the module and eligible records report unavailable. Readiness reports configuration without constructing an engine or checking assets; this optional status does not determine API availability. Engine exceptions and invalid/empty candidates report failed without a candidate. Candidates are accepted only when every character is a Telugu-block letter or combining mark and at least one character is a letter. The project does not construct IndicXlit because its safe local-only initialization has not been verified in this environment.
+
+## Limitations
+
+The lexicons are deliberately small and hand-maintained; they are not a vocabulary or measured classifier. Telugu script may contain loanwords, transliterations, names, or other content. Romanized spellings are highly variable; outside the seed list, tokens remain unknown. Transliteration has not been experimentally evaluated. General Telugu-English contextual disambiguation, morphology, POS/NER, translation, and meaning are not implemented; the limited illustrative fixture is described below.
+
+
+## Phase 3: ambiguity and explainability
+
+The additive ambiguities response field is an empty list when no configured candidate matches. The service runs after transliteration and preserves token labels, text, order, indices, offsets, and transliteration records. UNKNOWN means the language baseline could not classify a token; it is not an ambiguity record. A matched candidate record has status resolved when the exact rule selects a candidate, or abstained when anchors are missing or conflict. Abstention has a null selected_candidate.
+
+Each record contains token_index, surface, normalized-text start/end, candidates with source provenance, status, selected_candidate, rule_id, and evidence. No confidence score is claimed. The sole centralized rule, fixture.english_bank_immediate_context.v1, applies only to the exact ENGLISH token bank. Its exact immediate configured account or loan anchor supports an illustrative financial sense; river or shore supports an illustrative river-edge sense. These fixture anchors are matched by exact case-folded configured surface strings, regardless of their LID labels; an anchor label is not independent linguistic verification (for example, river may remain UNKNOWN and still match). These are illustrative English fixture meanings and anchors, not a validated Telugu lexicon or Telugu-English contextual disambiguation. Failed/unavailable transliteration records never serve as semantic evidence; this fixture does not depend on transliteration.
+
+Run tests from backend with python -m unittest discover -s tests -v. Only this deterministic fixture and the response contract are implemented and tested. General Telugu-English contextual disambiguation, a verified offline transliteration engine, translation, and empirical semantic-preservation evaluation are unsupported; fixture behavior awaits evaluation.
+
+## Phase 4: dataset and annotation validation
+
+Dataset authoring is separate from inference. Annotation records use `data/schema/annotation.schema.json` version 1.0 and JSONL, with original/normalized text, provenance, token labels and Python code-point offsets, optional nullable linguistic fields, and optional review metadata. The read-only `backend.app.services.dataset_validation` validator reuses project normalization/tokenization and validates JSONL lines, IDs, labels, spans, provenance/status consistency, ambiguity selection invariants, and optional translation/review types. Run `python backend/scripts/validate_dataset.py data/drafts/illustrative_examples.jsonl`. A successful structural check does not certify linguistic annotations or human review. The 16 records are synthetic machine-generated drafts; no reviewed benchmark or evaluation split exists. Future split policy is documented in `data/splits/README.md`.

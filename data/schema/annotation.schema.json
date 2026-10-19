@@ -1,0 +1,220 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bhashabridge:annotation:1.0",
+  "title": "BhashaBridge annotation record",
+  "description": "Structural JSONL record schema; semantic checks are implemented by backend/app/services/dataset_validation.py.",
+  "type": "object",
+  "required": [
+    "annotation_version",
+    "id",
+    "text",
+    "normalized_text",
+    "source_type",
+    "annotation_status",
+    "annotation_provenance",
+    "tokens"
+  ],
+  "properties": {
+    "annotation_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "normalized_text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_type": {
+      "type": "string",
+      "minLength": 1
+    },
+    "annotation_status": {
+      "enum": [
+        "draft",
+        "reviewed"
+      ]
+    },
+    "annotation_provenance": {
+      "type": "object",
+      "required": [
+        "method",
+        "details"
+      ],
+      "properties": {
+        "method": {
+          "type": "string",
+          "minLength": 1
+        },
+        "details": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "index",
+          "surface",
+          "start",
+          "end",
+          "language_label"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surface": {
+            "type": "string"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "end": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "language_label": {
+            "enum": [
+              "TELUGU_ROMANIZED",
+              "TELUGU_SCRIPT",
+              "ENGLISH",
+              "PUNCTUATION",
+              "NUMBER",
+              "OTHER",
+              "UNKNOWN"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "romanized_interpretation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "telugu_script_equivalent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "ambiguity": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "status",
+        "candidates",
+        "selected_candidate",
+        "evidence",
+        "rule_id"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "detected",
+            "resolved",
+            "abstained"
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "candidate_id",
+              "meaning",
+              "source"
+            ],
+            "properties": {
+              "candidate_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "meaning": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "selected_candidate": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "reference_translation": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "annotation_notes": {
+      "type": "string"
+    },
+    "review": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_reviewed",
+            "reviewed",
+            "disputed"
+          ]
+        },
+        "reviewer_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
