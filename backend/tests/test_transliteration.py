@@ -76,8 +76,9 @@ class TransliterationTests(unittest.TestCase):
         client = TestClient(app)
         engine = FakeEngine(RuntimeError("private detail"))
         original_analyze = analyze
-        with patch("app.api.routes.analyze.analyze", side_effect=lambda request: original_analyze(
-            request, transliteration_enabled=True, transliteration_engine=engine
+        with patch("app.api.routes.analyze.analyze", side_effect=lambda request, **kwargs: original_analyze(
+            request, transliteration_enabled=True, transliteration_engine=engine,
+            translation_provider=kwargs.get("translation_provider")
         )):
             response = client.post("/api/v1/analyze", json={"text": "nenu"})
         self.assertEqual(response.status_code, 200)
@@ -90,8 +91,9 @@ class TransliterationTests(unittest.TestCase):
         client = TestClient(app)
         engine = BrokenMetadataEngine()
         original_analyze = analyze
-        with patch("app.api.routes.analyze.analyze", side_effect=lambda request: original_analyze(
-            request, transliteration_enabled=True, transliteration_engine=engine
+        with patch("app.api.routes.analyze.analyze", side_effect=lambda request, **kwargs: original_analyze(
+            request, transliteration_enabled=True, transliteration_engine=engine,
+            translation_provider=kwargs.get("translation_provider")
         )):
             response = client.post("/api/v1/analyze", json={"text": "nenu"})
         self.assertEqual(response.status_code, 200)

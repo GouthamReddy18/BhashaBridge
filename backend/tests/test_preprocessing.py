@@ -79,7 +79,7 @@ class PreprocessingTests(unittest.TestCase):
         statuses = {m["name"]: m["status"] for m in ready["modules"]}
         self.assertEqual(statuses["normalization"], "available")
         self.assertEqual(statuses["tokenization"], "available")
-        self.assertEqual(statuses["translation"], "not_implemented")
+        self.assertEqual(statuses["translation"], "not_configured")
 
 
 if __name__ == "__main__":

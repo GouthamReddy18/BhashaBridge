@@ -220,8 +220,9 @@ class AmbiguityResolutionTests(unittest.TestCase):
     def test_api_compatibility_and_engine_exception(self):
         client = TestClient(app)
         original_analyze = analyze
-        with patch("app.api.routes.analyze.analyze", side_effect=lambda request: original_analyze(
-            request, transliteration_enabled=True, transliteration_engine=FakeFailingEngine()
+        with patch("app.api.routes.analyze.analyze", side_effect=lambda request, **kwargs: original_analyze(
+            request, transliteration_enabled=True, transliteration_engine=FakeFailingEngine(),
+            translation_provider=kwargs.get("translation_provider")
         )):
             response = client.post("/api/v1/analyze", json={"text": "nenu account bank"})
         self.assertEqual(response.status_code, 200)

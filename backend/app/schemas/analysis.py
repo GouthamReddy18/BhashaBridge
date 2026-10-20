@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator, model_validator
 
 MAX_INPUT_CHARS = 2000
 LanguageLabel = Literal[
@@ -13,6 +13,7 @@ class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: StrictStr = Field(max_length=MAX_INPUT_CHARS)
+    translate: StrictBool = False
 
     @field_validator("text")
     @classmethod
@@ -92,6 +93,49 @@ class ModuleStatus(BaseModel):
     detail: str
 
 
+class TranslationResult(BaseModel):
+    """Outcome and exact provider input, when a provider was actually invoked."""
+
+    status: Literal["disabled", "unavailable", "success", "failed"]
+    input_text: str | None = None
+    provider_id: str | None = None
+    translated_text: str | None = None
+    error_code: Literal[
+        "provider_not_configured", "provider_metadata_error",
+        "provider_error", "invalid_provider_output",
+    ] | None = None
+
+    @model_validator(mode="after")
+    def validate_outcome(self) -> "TranslationResult":
+        if self.status == "disabled":
+            if any(value is not None for value in (self.input_text, self.provider_id, self.translated_text, self.error_code)):
+                raise ValueError("disabled translation cannot contain provider data")
+        elif self.status == "unavailable":
+            if self.input_text is not None or self.provider_id is not None or self.translated_text is not None:
+                raise ValueError("unavailable translation cannot claim provider input or output")
+            if self.error_code != "provider_not_configured":
+                raise ValueError("unavailable translation requires provider_not_configured")
+        elif self.status == "success":
+            if (
+                self.input_text is None
+                or self.provider_id is None
+                or not self.provider_id.strip()
+                or not self.translated_text
+                or not self.translated_text.strip()
+            ):
+                raise ValueError("successful translation requires input, provider, and nonblank output")
+            if self.error_code is not None:
+                raise ValueError("successful translation cannot contain an error")
+        else:
+            if self.translated_text is not None or self.error_code is None or self.error_code == "provider_not_configured":
+                raise ValueError("failed translation requires a provider failure and cannot contain output")
+            if self.provider_id is None and self.error_code != "provider_metadata_error":
+                raise ValueError("failed translation without a provider identifier requires provider_metadata_error")
+            if self.provider_id is not None and not self.provider_id.strip():
+                raise ValueError("failed translation provider identifier must be nonblank")
+        return self
+
+
 class AnalyzeResponse(BaseModel):
     original_text: str
     normalized_text: str
@@ -99,3 +143,4 @@ class AnalyzeResponse(BaseModel):
     transliterations: list[TransliterationResult]
     modules: list[ModuleStatus]
     ambiguities: list[AmbiguityRecord] = Field(default_factory=list)
+    translation: TranslationResult

@@ -24,7 +24,7 @@ class HealthTests(unittest.TestCase):
         self.assertEqual(statuses["ambiguity_resolution"], "available")
         self.assertEqual(statuses["indic_lid_model"], "not_configured")
         self.assertEqual(statuses["transliteration"], "not_configured")
-        self.assertEqual(statuses["translation"], "not_implemented")
+        self.assertEqual(statuses["translation"], "not_configured")
 
     def test_optional_transliteration_does_not_initialize_engine_or_change_api_readiness(self):
         with patch.dict(os.environ, {"BHASHABRIDGE_TRANSLITERATION_ENABLED": "true"}):

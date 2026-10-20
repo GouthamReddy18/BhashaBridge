@@ -4,6 +4,7 @@ from app.services.ambiguity_resolution import resolve_ambiguities
 from app.services.language_identification import resolve_identifier
 from app.services.preprocessing import normalize_whitespace
 from app.services.tokenization import tokenize
+from app.services.translation import TranslationProvider, translate_text
 
 
 def analyze(
@@ -11,6 +12,7 @@ def analyze(
     *,
     transliteration_enabled: bool | None = None,
     transliteration_engine: TransliterationEngine | None = None,
+    translation_provider: TranslationProvider | None = None,
 ) -> AnalyzeResponse:
     """Run preprocessing, token-level identification, transliteration, and ambiguity rules."""
     normalized_text = normalize_whitespace(request.text)
@@ -29,12 +31,14 @@ def analyze(
         tokens=analyzed_tokens,
         transliterations=transliterations,
     )
+    translation = translate_text(request.text, requested=request.translate, provider=translation_provider)
     return AnalyzeResponse(
         original_text=request.text,
         normalized_text=normalized_text,
         tokens=analyzed_tokens,
         transliterations=transliterations,
         ambiguities=ambiguities,
+        translation=translation,
         modules=[
             ModuleStatus(name="input_validation", status="available", detail="Request type, non-empty content, and size are validated."),
             ModuleStatus(name="normalization", status="available", detail="Only leading/trailing and repeated whitespace is normalized."),
@@ -44,6 +48,10 @@ def analyze(
             ModuleStatus(name="transliteration", status=transliteration_status, detail=transliteration_detail),
             ModuleStatus(name="linguistic_analysis", status="not_implemented", detail="POS tagging and NER are not implemented."),
             ModuleStatus(name="ambiguity_resolution", status="available", detail="One deterministic illustrative fixture rule; behavior is not validated for Telugu-English code-mixed text."),
-            ModuleStatus(name="translation", status="not_implemented", detail="No translation is performed."),
+            ModuleStatus(
+                name="translation",
+                status="configured" if translation_provider is not None else "not_configured",
+                detail="An application-injected provider is available; translation is opt-in." if translation_provider is not None else "No translation provider is configured; requested translations report unavailable.",
+            ),
         ],
     )
