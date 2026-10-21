@@ -36,6 +36,8 @@ Unknown language identification and semantic ambiguity are separate: an unknown 
 
 `reference_translation` is nullable. Add a translation only when a qualified annotator supplies and reviews it with an appropriate provenance source. Preserve uncertainty and explain disagreements; do not generate translations just to fill the field. A transliteration, paraphrase, or machine suggestion is not a reference translation.
 
+For future semantic-preservation evaluation, `intended_meaning` records the reviewed interpretation that raters should preserve. Supply field-level provenance and a source reference. Keep it null when not established; the evaluation-readiness checker requires a reviewed, human-contributed meaning before benchmark use. This metadata does not establish that the interpretation is correct.
+
 ## Provenance and review
 
 Every row records `source_type` and `annotation_provenance.method` plus `.details`. Record actual origin, permissions/licensing constraints where applicable, and how annotations were produced. Generated examples must say so; model/rule suggestions are not human-reviewed annotations.
@@ -43,6 +45,10 @@ Every row records `source_type` and `annotation_provenance.method` plus `.detail
 New rows are `annotation_status: draft`. Do not add reviewer identity or date unless supplied by a real reviewer and review actually occurred. To mark a record reviewed, a reviewer must check the source text, normalization, tokenization/labels, every optional linguistic annotation and its evidence, and resolve or record disagreements. Then set both annotation and review statuses to `reviewed`, supply the reviewer identifier/pseudonym and ISO review date, and retain notes. Metadata consistency is not proof that a real review happened; maintain an audit trail outside the validator too.
 
 When annotators disagree, preserve the alternatives and notes; do not silently majority-vote or erase uncertainty. Use `disputed` review status where needed and do not place unresolved records in evaluation data. Resolve disagreements through a documented adjudication by a designated reviewer; record the actual reviewer, date, evidence, and outcome. If unresolved, retain the disagreement and abstain.
+
+## Dataset split metadata
+
+For a future reviewed release, assign each related source/template/paraphrase/ambiguity-context family a stable `split_group` and place the entire group in one `split`: `train`, `validation`, or `test`. Freeze and version the group assignment. The readiness check can detect groups split across partitions and exact duplicate normalized source text across partitions, but it cannot detect semantic near-duplicates or shared templates automatically; review those overlaps manually. Do not add split assignments to illustrative drafts to imply benchmark readiness.
 
 For ambiguity, annotate a record only when at least two plausible interpretations have documented provenance. Record candidate IDs, meanings, sources, actual contextual evidence, and a rule/source identifier. Use `detected` when alternatives are established but no selection is justified; `resolved` only when the evidence supports one listed candidate; use `abstained` when evidence is insufficient or conflicting. In both non-resolved states selection is null. The validator checks consistency but cannot prove the interpretations are correct or that review occurred.
 

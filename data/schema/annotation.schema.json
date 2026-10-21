@@ -28,6 +28,14 @@
       "minLength": 1,
       "pattern": "\\S"
     },
+    "split": {
+      "enum": ["train", "validation", "test"]
+    },
+    "split_group": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
     "normalized_text": {
       "type": "string",
       "minLength": 1,
@@ -205,6 +213,17 @@
                   "minLength": 1,
                   "pattern": "\\S"
                 }
+              },
+              "additionalProperties": false
+            },
+            "intended_meaning": {
+              "type": "object",
+              "required": ["origin", "review_status", "details"],
+              "properties": {
+                "origin": {"enum": ["human", "machine", "human_and_machine"]},
+                "review_status": {"enum": ["not_reviewed", "reviewed"]},
+                "details": {"type": "string", "minLength": 1, "pattern": "\\S"},
+                "source_reference": {"type": "string", "minLength": 1, "pattern": "\\S"}
               },
               "additionalProperties": false
             }
@@ -408,6 +427,12 @@
           "minLength": 1,
           "pattern": "\\S"
         }
+      ]
+    },
+    "intended_meaning": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "minLength": 1, "pattern": "\\S"}
       ]
     },
     "annotation_notes": {

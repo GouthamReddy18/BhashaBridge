@@ -13,8 +13,9 @@ from app.services.tokenization import tokenize
 
 VERSION = "1.0"
 LABELS = {"TELUGU_ROMANIZED", "TELUGU_SCRIPT", "ENGLISH", "PUNCTUATION", "NUMBER", "OTHER", "UNKNOWN"}
-RECORD_FIELDS = {"annotation_version", "id", "text", "normalized_text", "source_type", "annotation_status", "annotation_provenance", "tokens", "romanized_interpretation", "telugu_script_equivalent", "ambiguity", "reference_translation", "annotation_notes", "review"}
-LINGUISTIC_FIELDS = {"romanized_interpretation", "telugu_script_equivalent", "ambiguity", "reference_translation"}
+RECORD_FIELDS = {"annotation_version", "id", "text", "normalized_text", "source_type", "annotation_status", "annotation_provenance", "tokens", "romanized_interpretation", "telugu_script_equivalent", "ambiguity", "reference_translation", "intended_meaning", "split", "split_group", "annotation_notes", "review"}
+LINGUISTIC_FIELDS = {"romanized_interpretation", "telugu_script_equivalent", "ambiguity", "reference_translation", "intended_meaning"}
+SPLITS = {"train", "validation", "test"}
 ORIGINS = {"human", "machine", "human_and_machine"}
 
 @dataclass(frozen=True)
@@ -138,7 +139,7 @@ def _validate_field_provenance(record, provenance, record_status, review_status,
     if not isinstance(fields, dict):
         _add(report, line, "annotation_provenance.fields must be an object", rid); return
     for name in sorted(fields.keys() - LINGUISTIC_FIELDS): _add(report, line, f"annotation_provenance.fields has unsupported field: {name}", rid)
-    for name in LINGUISTIC_FIELDS:
+    for name in sorted(LINGUISTIC_FIELDS):
         annotated = record.get(name) is not None
         info = fields.get(name)
         if annotated and info is None:
@@ -162,6 +163,10 @@ def _validate_field_provenance(record, provenance, record_status, review_status,
             if origin not in {"human", "human_and_machine"}: _add(report, line, "reference_translation cannot be machine-only", rid)
             if state != "reviewed" or record_status != "reviewed" or review_status != "reviewed": _add(report, line, "reference_translation requires a reviewed record and reviewed field provenance", rid)
             if not _nonblank(info.get("source_reference")): _add(report, line, "reference_translation requires source_reference provenance", rid)
+        if name == "intended_meaning":
+            if origin not in {"human", "human_and_machine"}: _add(report, line, "intended_meaning cannot be machine-only", rid)
+            if state != "reviewed" or record_status != "reviewed" or review_status != "reviewed": _add(report, line, "intended_meaning requires a reviewed record and reviewed field provenance", rid)
+            if not _nonblank(info.get("source_reference")): _add(report, line, "intended_meaning requires source_reference provenance", rid)
 
 def _validate_record(obj: Any, line: int, report: ValidationReport, seen: set[str]) -> None:
     if not isinstance(obj, dict): _add(report, line, "record must be a JSON object"); return
@@ -211,8 +216,10 @@ def _validate_record(obj: Any, line: int, report: ValidationReport, seen: set[st
             surface = token.get("surface")
             if not _nonblank(surface) or normalized[start:end] != surface: _add(report, line, f"tokens[{index}].surface does not match normalized-text slice", rid)
             if index < len(expected) and (start, end, surface) != (expected[index].start, expected[index].end, expected[index].text): _add(report, line, f"tokens[{index}] does not match project tokenizer boundaries", rid)
-    for name in ("romanized_interpretation", "telugu_script_equivalent", "reference_translation"):
+    for name in ("romanized_interpretation", "telugu_script_equivalent", "reference_translation", "intended_meaning"):
         if name in obj and obj[name] is not None and not _nonblank(obj[name]): _add(report, line, f"{name} must be a nonblank string or null", rid)
+    if "split" in obj and (not isinstance(obj["split"], str) or obj["split"] not in SPLITS): _add(report, line, "split must be train, validation, or test", rid)
+    if "split_group" in obj and not _nonblank(obj["split_group"]): _add(report, line, "split_group must be a nonblank string when supplied", rid)
     if "annotation_notes" in obj and not _nonblank(obj["annotation_notes"]): _add(report, line, "annotation_notes must be a nonblank string when supplied", rid)
     _validate_ambiguity(obj.get("ambiguity"), report, line, rid)
     _validate_field_provenance(obj, provenance, status, review_status, report, line, rid)

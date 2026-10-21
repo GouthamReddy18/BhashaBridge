@@ -17,7 +17,7 @@ The new annotation format, guidelines, CLI, and structural checks are implemente
 
 The paired direct/assisted orchestration is an in-memory framework, not an experiment result or evidence of improvement. The default assisted builder makes no linguistic substitutions because no validated Telugu-English replacement resource exists. Whitespace normalization is separately traced and is not meaningful linguistic assistance. Synthetic transformations exist only through explicit test injection and must not be treated as linguistic knowledge. The existing English `bank` ambiguity fixture and transliteration candidates are not replacement text.
 
-Both arms call the same provider instance, but its current protocol accepts only text. English target and optional generation settings are requested metadata, not settings the provider is confirmed to have received. No real translation provider is configured; deterministic fake providers are test-only. There is no evaluation score, persistence, human-reviewed benchmark, or measured quality/semantic-preservation result. Provider calls are synchronous without explicit timeout/cancellation/resource cleanup. Phase 6C persistence and Phase 6D evaluation remain unimplemented.
+Both arms call the same provider instance, but its current protocol accepts only text. English target and optional generation settings are requested metadata, not settings the provider is confirmed to have received. No real translation provider is configured; deterministic fake providers are test-only. There is no evaluation score, persistence, human-reviewed benchmark, or measured quality/semantic-preservation result. Provider calls are synchronous without explicit timeout/cancellation/resource cleanup. Phase 6D.1 provides the protocol and readiness checker only; controlled evaluation and results remain future Phase 6D.2 work.
 
 ### Phase 6B.1 contract limits
 
@@ -26,6 +26,8 @@ The schema now rejects contradictory fallback and paired-arm records, but proven
 The experiment supports direct_first (default) and assisted_first order and records attempted invocation order. Either deterministic order can still confound paired results for stateful, nondeterministic, or rate-limited providers; order and provider-state controls remain necessary before comparative interpretation. Requested English (en) and generation settings are not enforced by the current text-only interface. No empirical improvement is established. Synchronous provider calls still have no explicit timeout/cancellation boundary.
 
 The experiment trace distinguishes intended arm text from actual provider input; unavailable or pre-invocation metadata failures do not claim a provider call occurred.
+
+Phase 6D.1 defines a future evaluation protocol and checks dataset readiness metadata. The readiness checker cannot authenticate reviewer identity, validate linguistic correctness or licensing, or automatically detect paraphrase/template leakage. The 16 synthetic draft records remain ineligible, and no BLEU, chrF, semantic scores, significance tests, or empirical improvement claims are available. Real annotation and review plus a group-aware held-out set are still required. See [the evaluation protocol](evaluation_protocol.md).
 
 Applying synthetic test transformations does not count as meaningful linguistic assistance or establish research efficacy. meaningful_assistance remains false until an independently reviewed production transformation mechanism is implemented.
 
