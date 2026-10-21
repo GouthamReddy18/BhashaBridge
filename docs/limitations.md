@@ -12,3 +12,19 @@ Phase 3 implements an explainable rule framework exercised by one illustrative E
 ## Phase 4 data limitations
 
 The new annotation format, guidelines, CLI, and structural checks are implemented. The 16 examples are synthetic drafts; baseline token labels are suggestions, and no Romanized interpretation, Telugu equivalent, candidate meaning, or translation is asserted as verified. No human-reviewed dataset, evaluation split, measured Telugu-English disambiguation accuracy, or semantic-preservation improvement exists. Validator success checks format and internal consistency only; it cannot verify linguistic truth, source rights, or whether claimed human review occurred. Future work requires qualified annotation, provenance/licensing review, adjudication, and leakage-controlled evaluation.
+
+## Phase 6B experiment limits
+
+The paired direct/assisted orchestration is an in-memory framework, not an experiment result or evidence of improvement. The default assisted builder makes no linguistic substitutions because no validated Telugu-English replacement resource exists. Whitespace normalization is separately traced and is not meaningful linguistic assistance. Synthetic transformations exist only through explicit test injection and must not be treated as linguistic knowledge. The existing English `bank` ambiguity fixture and transliteration candidates are not replacement text.
+
+Both arms call the same provider instance, but its current protocol accepts only text. English target and optional generation settings are requested metadata, not settings the provider is confirmed to have received. No real translation provider is configured; deterministic fake providers are test-only. There is no evaluation score, persistence, human-reviewed benchmark, or measured quality/semantic-preservation result. Provider calls are synchronous without explicit timeout/cancellation/resource cleanup. Phase 6C persistence and Phase 6D evaluation remain unimplemented.
+
+### Phase 6B.1 contract limits
+
+The schema now rejects contradictory fallback and paired-arm records, but provenance metadata is not independently authenticated. Production linguistic substitutions remain disabled; strings labeled verified cannot enable them. Entity-review metadata is likewise not an entity detector. Synthetic edits are test-only, opt-in, and labeled synthetic. A future independently reviewed rule registry and entity-review process are required before production transformations.
+
+The experiment always executes direct before assisted. This fixed order can confound paired results for stateful, nondeterministic, or rate-limited providers; Phase 6C must address order and provider-state controls before comparative interpretation. Requested English (en) and generation settings are not enforced by the current text-only interface. No empirical improvement is established. Synchronous provider calls still have no explicit timeout/cancellation boundary.
+
+The experiment trace distinguishes intended arm text from actual provider input; unavailable or pre-invocation metadata failures do not claim a provider call occurred.
+
+Applying synthetic test transformations does not count as meaningful linguistic assistance or establish research efficacy. meaningful_assistance remains false until an independently reviewed production transformation mechanism is implemented.
