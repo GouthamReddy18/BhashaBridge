@@ -2,6 +2,7 @@ import unittest
 
 from pydantic import ValidationError
 
+from app.schemas.analysis import TranslationResult
 from app.schemas.experiment import (
     ExperimentConfiguration,
     PairedExperimentResult,
@@ -34,6 +35,23 @@ class FirstCallFailsProvider(FakeProvider):
         return ProviderTranslation("second arm output")
 
 
+class AssistedOnlyFailureProvider(FakeProvider):
+    def translate(self, request):
+        self.calls.append(request)
+        if request.text == "nenu":
+            raise RuntimeError("private assisted failure")
+        return ProviderTranslation("direct output")
+
+
+class ProviderIdFailureProvider:
+    @property
+    def provider_id(self):
+        raise RuntimeError("private provider metadata")
+
+    def translate(self, request):
+        raise AssertionError("translate must not run after provider ID failure")
+
+
 class ExperimentTests(unittest.TestCase):
     def test_direct_receives_exact_original_unicode_and_whitespace(self):
         text = "  😀 తెలుగు nenu "
@@ -50,6 +68,95 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(result.assisted.intended_input, "nenu college")
         self.assertEqual(result.assisted.provider_input, "nenu college")
 
+    def test_default_order_is_direct_first_and_records_attempts(self):
+        provider = FakeProvider()
+        result = run_paired_experiment(" nenu ", provider=provider)
+        self.assertEqual(result.configuration.execution_order, "direct_first")
+        self.assertEqual(result.invocation_order, ["direct", "assisted"])
+        self.assertEqual([call.text for call in provider.calls], [" nenu ", "nenu"])
+        self.assertEqual(result.direct.arm, "direct")
+        self.assertEqual(result.assisted.arm, "assisted")
+
+    def test_assisted_first_order_keeps_stable_arm_identity_and_inputs(self):
+        provider = FakeProvider()
+        configuration = ExperimentConfiguration(execution_order="assisted_first")
+        result = run_paired_experiment("  nenu  ", provider=provider, configuration=configuration)
+        self.assertEqual(result.invocation_order, ["assisted", "direct"])
+        self.assertEqual([call.text for call in provider.calls], ["nenu", "  nenu  "])
+        self.assertEqual(result.direct.provider_input, "  nenu  ")
+        self.assertEqual(result.assisted.provider_input, "nenu")
+        self.assertEqual(result.direct.arm, "direct")
+        self.assertEqual(result.assisted.arm, "assisted")
+
+    def test_invalid_execution_order_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            ExperimentConfiguration(execution_order="random")
+
+    def test_invocation_order_must_match_actual_recorded_calls(self):
+        result = run_paired_experiment("nenu", provider=FakeProvider()).model_dump()
+        bad = {**result, "invocation_order": ["assisted", "direct"]}
+        with self.assertRaises(ValidationError):
+            PairedExperimentResult(**bad)
+        invented = {**result, "invocation_order": ["direct"]}
+        with self.assertRaises(ValidationError):
+            PairedExperimentResult(**invented)
+
+    def test_arm_schema_rejects_provider_inputs_inconsistent_with_invocation(self):
+        with self.assertRaises(ValidationError):
+            TranslationArmResult(
+                arm="direct",
+                intended_input="source",
+                provider_input=None,
+                translation=TranslationResult(
+                    status="failed", provider_id="fixture.fake",
+                    error_code="provider_error",
+                ),
+                provider_confirmed={"provider_id": "fixture.fake"},
+            )
+        with self.assertRaises(ValidationError):
+            TranslationArmResult(
+                arm="direct",
+                intended_input="source",
+                provider_input="source",
+                translation=TranslationResult(
+                    status="failed", error_code="provider_metadata_error",
+                ),
+                provider_confirmed={"provider_id": None},
+            )
+
+    def test_unavailable_provider_records_no_attempts(self):
+        result = run_paired_experiment("nenu", provider=None)
+        self.assertEqual(result.invocation_order, [])
+        self.assertIsNone(result.direct.provider_input)
+        self.assertIsNone(result.assisted.provider_input)
+
+    def test_provider_id_failure_records_no_provider_invocation(self):
+        result = run_paired_experiment("nenu", provider=ProviderIdFailureProvider())
+        self.assertEqual(result.invocation_order, [])
+        self.assertEqual(result.direct.translation.error_code, "provider_metadata_error")
+        self.assertIsNone(result.direct.provider_input)
+        self.assertEqual(result.assisted.translation.error_code, "provider_metadata_error")
+
+    def test_assisted_failure_preserves_direct_result_in_assisted_first_order(self):
+        provider = AssistedOnlyFailureProvider()
+        config = ExperimentConfiguration(execution_order="assisted_first")
+        result = run_paired_experiment("  nenu  ", provider=provider, configuration=config)
+        self.assertEqual(result.invocation_order, ["assisted", "direct"])
+        self.assertEqual(result.assisted.translation.status, "failed")
+        self.assertEqual(result.direct.translation.status, "success")
+        self.assertEqual(result.direct.translation.translated_text, "direct output")
+
+    def test_both_failed_attempts_are_recorded_in_execution_order(self):
+        result = run_paired_experiment(
+            "nenu", provider=FakeProvider(fail=True),
+            configuration=ExperimentConfiguration(execution_order="assisted_first"),
+        )
+        self.assertEqual(result.invocation_order, ["assisted", "direct"])
+        self.assertEqual(result.assisted.translation.status, "failed")
+        self.assertEqual(result.direct.translation.status, "failed")
+        self.assertEqual(result.assisted.translation.error_code, "provider_error")
+        self.assertEqual(result.direct.translation.error_code, "provider_error")
+
     def test_requested_configuration_is_not_reported_as_confirmed_or_forwarded(self):
         configuration = ExperimentConfiguration(
             target_language="en",
@@ -65,6 +172,7 @@ class ExperimentTests(unittest.TestCase):
     def test_provider_free_and_failed_outcomes_remain_valid(self):
         no_provider = run_paired_experiment("nenu", provider=None)
         self.assertEqual(no_provider.direct.translation.status, "unavailable")
+        self.assertEqual(no_provider.invocation_order, [])
         self.assertEqual(no_provider.direct.intended_input, "nenu")
         self.assertIsNone(no_provider.direct.provider_input)
         failed = run_paired_experiment("nenu", provider=FakeProvider(fail=True))
@@ -78,6 +186,7 @@ class ExperimentTests(unittest.TestCase):
         self.assertEqual(len(provider.calls), 2)
         self.assertEqual(result.direct.translation.error_code, "provider_error")
         self.assertEqual(result.assisted.translation.status, "success")
+        self.assertEqual(result.invocation_order, ["direct", "assisted"])
         self.assertEqual(result.assisted.translation.input_text, result.assisted.provider_input)
 
     def test_provider_inputs_match_actual_calls_and_no_score_is_created(self):

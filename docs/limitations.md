@@ -23,8 +23,13 @@ Both arms call the same provider instance, but its current protocol accepts only
 
 The schema now rejects contradictory fallback and paired-arm records, but provenance metadata is not independently authenticated. Production linguistic substitutions remain disabled; strings labeled verified cannot enable them. Entity-review metadata is likewise not an entity detector. Synthetic edits are test-only, opt-in, and labeled synthetic. A future independently reviewed rule registry and entity-review process are required before production transformations.
 
-The experiment always executes direct before assisted. This fixed order can confound paired results for stateful, nondeterministic, or rate-limited providers; Phase 6C must address order and provider-state controls before comparative interpretation. Requested English (en) and generation settings are not enforced by the current text-only interface. No empirical improvement is established. Synchronous provider calls still have no explicit timeout/cancellation boundary.
+The experiment supports direct_first (default) and assisted_first order and records attempted invocation order. Either deterministic order can still confound paired results for stateful, nondeterministic, or rate-limited providers; order and provider-state controls remain necessary before comparative interpretation. Requested English (en) and generation settings are not enforced by the current text-only interface. No empirical improvement is established. Synchronous provider calls still have no explicit timeout/cancellation boundary.
 
 The experiment trace distinguishes intended arm text from actual provider input; unavailable or pre-invocation metadata failures do not claim a provider call occurred.
 
 Applying synthetic test transformations does not count as meaningful linguistic assistance or establish research efficacy. meaningful_assistance remains false until an independently reviewed production transformation mechanism is implemented.
+
+
+### Phase 6C execution-order limits
+
+Paired experiments can explicitly run direct_first (default) or assisted_first; the result records the actual attempted invocation order separately from stable arm identity. A provider call that raises is an attempt; a provider-ID failure before the call is not. Choosing a deterministic order improves traceability, not provider determinism or causal validity. Stateful behavior, rate limits, transient failures, and provider-side effects can still confound comparisons. No real provider, reviewed transformation resource, human-reviewed evaluation benchmark, or measured translation-quality/semantic-preservation improvement exists.

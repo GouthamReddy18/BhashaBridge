@@ -52,8 +52,15 @@ Pydantic result models enforce fallback, transformation, normalization-only, ide
 
 Caller-provided provenance/evidence strings and non-entity assertions are descriptive declarations, not proof. evidence_status="verified" is not sufficient authorization: production substitutions are always skipped until a future trusted, independently reviewed rule registry exists. Synthetic transformations can run only with the explicit test-fixture opt-in and are emitted as synthetic_fixture. This is not verified Telugu linguistic knowledge. A future trusted resource must also provide a real entity-review process; the current system has no NER.
 
-Execution order remains fixed: direct first, assisted second. No order randomization or provider-state control is implemented. Stateful, nondeterministic, or rate-limited providers may create order effects; Phase 6C must specify experimental controls before real paired results are interpreted.
+Phase 6C supports direct_first (default) and assisted_first order and records attempted invocation order. No order randomization or provider-state control is implemented. Stateful, nondeterministic, or rate-limited providers may create order effects; additional experimental controls remain necessary before real paired results are interpreted.
 
 Each arm stores intended_input separately from provider_input. provider_input is copied only from the existing TranslationResult.input_text and remains null when no invocation occurred. The arm schema rejects a mismatch between those values and the actual translation trace.
 
 Synthetic edits remain visible in transformation records for mechanism tests, but they never set meaningful_assistance. That flag remains false until an independently reviewed production transformation mechanism exists; no such mechanism is currently configured.
+
+
+### Phase 6C: execution order and attempt trace
+
+ExperimentConfiguration.execution_order accepts direct_first (the backward-compatible default) or assisted_first. Arm identity is independent of order: the direct result always corresponds to exact original input and assisted to builder output. PairedExperimentResult.invocation_order records the arms in the order their provider translate() call was entered. Provider-ID failures and unconfigured providers have no input_text, so they are not recorded as invocations; provider-call failures retain the exact input and count as attempted. Each arm is still attempted independently.
+
+The configured order is deterministic and recorded, but it does not make provider behavior deterministic or remove order effects from shared state, rate limits, transient failures, or provider-side behavior. The text-only provider remains synchronous, with no timeout/cancellation boundary.

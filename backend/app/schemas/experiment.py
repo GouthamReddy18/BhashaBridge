@@ -135,6 +135,7 @@ class ExperimentConfiguration(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     target_language: Literal["en"] = "en"
+    execution_order: Literal["direct_first", "assisted_first"] = "direct_first"
     requested_model: str | None = None
     requested_generation_settings: dict[str, str | int | float | bool] = Field(default_factory=dict)
 
@@ -169,6 +170,16 @@ class TranslationArmResult(BaseModel):
             raise ValueError("experiment arms represent requested translation")
         if self.translation.input_text != self.provider_input:
             raise ValueError("provider_input must match the actual recorded provider input")
+        if (
+            self.translation.error_code == "provider_metadata_error"
+            and self.provider_input is not None
+        ):
+            raise ValueError("provider metadata failure occurs before provider invocation")
+        if (
+            self.translation.error_code in {"provider_error", "invalid_provider_output"}
+            and self.provider_input is None
+        ):
+            raise ValueError("provider-call failures must retain the attempted input")
         if self.provider_input is not None and self.provider_input != self.intended_input:
             raise ValueError("actual provider input must match intended arm input")
         if self.translation.provider_id != self.provider_confirmed.provider_id:
@@ -186,6 +197,7 @@ class PairedExperimentResult(BaseModel):
     assisted_input: AssistedInputResult
     analysis: ExperimentAnalysisTrace
     same_provider_instance_supplied: bool
+    invocation_order: list[Literal["direct", "assisted"]] = Field(default_factory=list)
     provider_configuration_forwarded: Literal[False] = False
     provider_protocol_note: str = (
         "Text-only provider protocol does not accept target-language or generation settings."
@@ -203,6 +215,22 @@ class PairedExperimentResult(BaseModel):
             raise ValueError("assisted arm must intend the constructed input")
         if self.analysis.normalized_input != self.assisted_input.normalized_input:
             raise ValueError("analysis and assisted-input normalization must match")
+        if len(self.invocation_order) != len(set(self.invocation_order)):
+            raise ValueError("each experiment arm can be invoked at most once")
+        attempted = [
+            name for name in ("direct", "assisted")
+            if getattr(self, name).translation.input_text is not None
+        ]
+        configured_order = (
+            ["direct", "assisted"]
+            if self.configuration.execution_order == "direct_first"
+            else ["assisted", "direct"]
+        )
+        expected_invocations = [name for name in configured_order if name in attempted]
+        if self.invocation_order != expected_invocations:
+            raise ValueError(
+                "invocation_order must match configured order for attempted arms"
+            )
         if not self.same_provider_instance_supplied:
             for arm in (self.direct, self.assisted):
                 if arm.translation.status != "unavailable" or arm.translation.error_code != "provider_not_configured":
