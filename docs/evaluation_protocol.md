@@ -2,7 +2,7 @@
 
 ## Status and objective
 
-This document defines the protocol for a future paired evaluation of BhashaBridge's direct and assisted translation arms. It does not run an evaluation or calculate quality scores. The primary question is whether assisted translation preserves intended meaning better than direct translation on eligible, reviewed Telugu-English code-mixed examples. Improvement is a hypothesis, not an assumption.
+This document defines the protocol and tooling for a future empirical paired evaluation of BhashaBridge's direct and assisted translation arms. The local evaluator can calculate reference-based proxy scores from explicitly supplied artifacts, but no real benchmark evaluation or research result is reported here. The primary question is whether assisted translation preserves intended meaning better than direct translation on eligible, reviewed Telugu-English code-mixed examples. Improvement is a hypothesis, not an assumption.
 
 For each source example, Arm A receives the exact original source text and Arm B receives the output of the existing assisted-input builder. A valid pair uses the same example ID, target-language requirement, and controlled provider configuration. Record requested settings separately from provider-confirmed settings. The current provider interface cannot confirm or accept target language, model, or generation settings; those values must not be represented as confirmed.
 
@@ -31,17 +31,21 @@ For nondeterministic providers, predefine and report the number of repeated tria
 
 Do not expose reference translations or intended meanings to the translation provider. Keep final test references and labels out of prompt/rule development, model selection, and threshold tuning. Freeze the test set and evaluation procedure before inspecting test outputs. Report results separately by assistance category and ambiguity behavior, including resolution coverage and abstentions.
 
-## Metric specifications (planned; not implemented)
+## Phase 6D.2 metric implementation
 
 ### Reference-based translation quality
 
-Corpus chrF is a preferred candidate metric for future exploration because character n-grams can be useful for morphologically varied and transliterated outputs. It has not been validated for this project or dataset. Corpus BLEU may be reported as a secondary reference-based metric with a fixed, published tokenization and normalization procedure. Neither metric replaces human judgment of meaning.
+Phase 6D.2 implements corpus BLEU-4 and corpus chrF using the versioned in-project implementation `bhashabridge.metrics` 1.0.0. No metric package was installed in the project environment, so this implementation is explicitly versioned and tested locally rather than being represented as SacreBLEU output. Scores from this implementation must not be compared with values from another implementation or configuration without a compatibility study. Neither metric replaces human judgment of meaning.
 
-These metrics require frozen, reviewed English reference translations and consistent hypotheses. Interpret scores at corpus level; sentence-level scores are unstable and must not be treated as per-example judgments. Document the implementation/version, tokenization, case handling, punctuation handling, and normalization. Report arm-level metric coverage and paired coverage. Missing hypotheses receive no fabricated substitute: retain the example in operational denominators, report missing output rates, and calculate quality only on clearly identified available-output sets. Also show paired metric differences only for IDs with compatible outputs in both arms. If references are unavailable, report no score.
+Both metrics first normalize each reference and hypothesis to Unicode NFC and collapse all whitespace runs to one ASCII space. Matching is case-sensitive. BLEU splits only on whitespace, leaving punctuation attached to its token. It uses one reference per example, clipped corpus n-gram counts through order 4, exponential zero-count smoothing (the smoothing factor doubles for each zero-match order), effective order (orders with no possible hypothesis n-grams are omitted), the standard brevity penalty, and a geometric mean over active orders. Scores are on a 0–100 scale.
+
+chrF uses character n-grams of orders 1–6, beta 2, and word order 0 (chrF, not chrF++). Whitespace is removed before character n-gram extraction; Unicode code points are counted after NFC normalization. Clipped counts are accumulated by order across the corpus, precision and recall are macro-averaged over orders with at least one reference or hypothesis n-gram, and the corpus F-beta score is reported on a 0–100 scale. Empty corpora have no score. Blank references or hypotheses are rejected by the metric functions; the evaluator never passes missing or failed outputs to them.
+
+Scores are corpus-level. Optional sentence-level proxy comparisons are available only with `--include-per-example`; they are exploratory, unstable for small corpora, and are not individual meaning judgments. The report always gives each arm's available-success population and both arms' identical matched-success population. It calculates the paired aggregate difference as the assisted corpus score minus the direct corpus score on the matched IDs; this is not the average of sentence-level differences. Failed, unavailable, disabled, missing, and invalid results stay visible in operational outcome counts. A failure is never converted to a score. If the dataset readiness gate fails, scoring is suppressed.
 
 ### Human semantic-preservation rubric
 
-Independent raters compare each output with the source and reviewed intended meaning, without seeing which arm produced it where feasible. Use this ordinal scale:
+This rubric is a proposed protocol only. The repository does not yet define a genuine human-rating artifact schema, and Phase 6D.2 does not accept or aggregate ratings. No ratings or semantic-preservation score are created by the evaluator. When a compatible schema is approved, independent raters should compare each output with the source and reviewed intended meaning, without seeing which arm produced it where feasible, using this ordinal scale:
 
 | Score | Guidance |
 | --- | --- |
@@ -73,4 +77,24 @@ The current 16 illustrative records remain unreviewed drafts. Do not assign them
 
 Run structural validation with `python backend/scripts/validate_dataset.py path/to/data.jsonl`. Run the separate future-benchmark eligibility check with `python backend/scripts/check_evaluation_readiness.py path/to/data.jsonl`. The readiness checker reuses structural validation and reports blocking errors separately from warnings; it reads but never changes the source dataset. A structurally valid draft dataset is expected to report `NOT READY`.
 
-Phase 6D.1 implements this protocol and metadata-readiness checks only. Phase 6D.2 remains future work: acquiring and reviewing eligible data, selecting and pinning metric tooling, building controlled evaluation orchestration/reporting, and conducting human evaluation. No BLEU/chrF implementation, semantic score, significance test, real provider, benchmark split, or research result is provided here.
+## Paired artifact and CLI
+
+The annotation input is the existing UTF-8 JSONL format. The paired-results input is UTF-8 JSONL with one object per example: `schema_version` must be `"1.0"`, `example_id` joins to the annotation `id`, and `result` is the serialized existing `PairedExperimentResult` model (including `original_input`, `configuration`, `direct`, `assisted`, `assisted_input`, `analysis`, `same_provider_instance_supplied`, `invocation_order`, and provider protocol metadata). Each arm carries its `arm`, `intended_input`, optional actual `provider_input`, typed `translation` outcome, and `provider_confirmed` metadata. The result model validates arm identity and invocation invariants. Duplicate result IDs and malformed/schema-invalid rows are rejected. A pair whose original input does not exactly match the annotation source is counted as invalid for both arms. The two JSONL inputs are read-only.
+
+Example invocation (supply real reviewed annotation and real provider artifacts explicitly):
+
+```powershell
+python backend/scripts/evaluate_paired_experiment.py `
+  --annotations path/to/reviewed_annotations.jsonl `
+  --paired-results path/to/paired_results.jsonl `
+  --split test `
+  --output path/to/evaluation_report.json
+```
+
+The CLI runs structural validation and the Phase 6D.1 readiness check on the supplied annotation file. Any blocking readiness error makes the file ineligible and suppresses all scores; an empty requested split or no successful output population is also a nonzero result. Rows outside the requested split are excluded from the scoring denominator. Within a ready split, missing pair artifacts and all provider outcomes remain in the operational denominator. The report is deterministic for identical inputs and has no timestamp. It omits full source/translation text and provider exception details; provider IDs are included only when they match a conservative safe-identifier pattern. `--include-per-example` opts into example IDs and sentence-level proxy scores. Existing report files are preserved unless `--overwrite` is given.
+
+In the JSON report, `records_discovered` counts annotation rows in the supplied file; `eligible_records` counts records in the requested split after the dataset-wide readiness gate passes, before considering paired-output availability; `excluded_records` counts rows excluded by the readiness gate or requested split. Exclusion-reason counts can overlap when one record has multiple readiness issues. `invalid_pair_records` counts joined results excluded for source or provider/configuration incompatibility, and `orphan_pair_results` counts result IDs absent from the annotation file. Each arm's outcome-count denominator is `eligible_records`; status counts include success, failed, unavailable, disabled, missing, and invalid. `attempted_invocations`, pre-invocation failures, configured execution-order counts, and actual invocation-trace counts are reported separately. Runs with different requested model/settings or conflicting confirmed provider IDs are marked invalid rather than mixed into a corpus. An `invalid_provider_output` failure code is a failed provider call; it is not scored. The current paired-result schema does not permit disabled arm results, so valid artifacts report zero disabled outcomes. The project's `mock.test` provider is explicitly classified invalid and is never scored.
+
+The current experiment schema models requested translation outcomes, so its provider-free outcome is `unavailable`; `disabled` is not a valid completed paired-arm result and is reported as zero for valid artifacts. Invalid artifact schemas are fatal input errors rather than silently repaired records. Human semantic-preservation aggregation is deferred because the repository has no genuine human-rating artifact schema. The report identifies this as deferred and emits no human score.
+
+Phase 6D.1 implements the protocol and metadata-readiness checks. Phase 6D.2 implements local scoring and reporting infrastructure only. It does not acquire/review eligible data, run a real provider, add a human-rating schema, or establish a research result. No significance test is performed.

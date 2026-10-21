@@ -42,7 +42,7 @@ Dataset authoring is separate from inference. Annotation records use `data/schem
 
 ## Phase 6D.1: evaluation protocol and readiness
 
-See [the evaluation protocol](evaluation_protocol.md) for the paired study design, planned metrics, human semantic rubric, missingness reporting, and leakage policy. The optional read-only `backend/scripts/check_evaluation_readiness.py` reuses structural dataset validation and checks reviewed human-contributed references and intended meanings plus split/group metadata. Annotation version 1.0 accepts these additions optionally, so existing drafts remain structurally valid. The 16 drafts are not evaluation-ready. This phase does not score translations, add a provider, or claim research results; Phase 6D.2 remains future implementation and evaluation work.
+See [the evaluation protocol](evaluation_protocol.md) for the paired study design, metric definitions, human semantic rubric, missingness reporting, and leakage policy. The read-only `backend/scripts/check_evaluation_readiness.py` reuses structural dataset validation and checks reviewed human-contributed references and intended meanings plus split/group metadata. Annotation version 1.0 accepts these additions optionally, so existing drafts remain structurally valid. The separate `backend/scripts/evaluate_paired_experiment.py` consumes an explicit annotation JSONL and a versioned paired-results JSONL artifact, requires the readiness gate to pass, and writes a deterministic JSON report. Phase 6D.2 adds local corpus BLEU/chrF and matched-population aggregation; it does not add a provider, human-score aggregator, or research result. The 16 drafts remain ineligible.
 
 ## Phase 6B: assisted input and paired arms
 
