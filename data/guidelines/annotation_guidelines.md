@@ -44,6 +44,14 @@ Every row records `source_type` and `annotation_provenance.method` plus `.detail
 
 New rows are `annotation_status: draft`. Do not add reviewer identity or date unless supplied by a real reviewer and review actually occurred. To mark a record reviewed, a reviewer must check the source text, normalization, tokenization/labels, every optional linguistic annotation and its evidence, and resolve or record disagreements. Then set both annotation and review statuses to `reviewed`, supply the reviewer identifier/pseudonym and ISO review date, and retain notes. Metadata consistency is not proof that a real review happened; maintain an audit trail outside the validator too.
 
+### Offline annotation workflow
+
+Use `python backend/scripts/annotation_workflow.py --help` for the offline workflow. `create-draft` writes one new JSONL draft and refuses to overwrite its output. Its token labels come from the project's conservative baseline and the row is marked machine-origin and `draft`; treat every label as an annotation suggestion. Add records to a working copy with a text editor or your annotation process. Record the actual source type, source permissions, and annotation method in the supplied metadata and notes.
+
+For each revision, keep the prior JSONL file, make edits in a new copy, run `validate`, then run `record-revision OLD NEW MANIFEST --change-note "..."`. The manifest stores hashes of the exact old and new bytes and a sorted list of changed record IDs; it is deterministic and refuses to replace an existing file. It is an integrity aid, not a digital signature or proof of who made the edit. It requires stable record IDs and structurally valid versions of both datasets.
+
+Only the actual reviewer may enter that review's identifier, date, outcomes, and field-level reviewed provenance after performing the stated checks. The workflow never promotes a draft or fills reviewer metadata. Run `check-readiness` after review and split/group assignment. `export-ready DATASET OUTPUT` copies the complete input byte-for-byte only when the whole dataset passes readiness; the output must be new. It does not filter out ineligible rows, modify annotations, authenticate provenance, or certify linguistic truth. Synthetic records used in software tests are not annotation examples or research evidence.
+
 When annotators disagree, preserve the alternatives and notes; do not silently majority-vote or erase uncertainty. Use `disputed` review status where needed and do not place unresolved records in evaluation data. Resolve disagreements through a documented adjudication by a designated reviewer; record the actual reviewer, date, evidence, and outcome. If unresolved, retain the disagreement and abstain.
 
 ## Dataset split metadata

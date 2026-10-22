@@ -11,7 +11,7 @@
 | Core analysis API | Implemented and verified | FastAPI health, readiness, and analysis endpoints; the 211-test backend suite passes. Rule-based labels and the narrow ambiguity example are not measured linguistic models. |
 | Annotation format and structural validation | Implemented and verified | Version 1.0 JSON Schema, annotation guidance, and read-only JSONL validator. Structural validity does not establish linguistic accuracy, permission to use a source, or actual review. |
 | Dataset eligibility | Implemented; real reviewed data unavailable | Readiness checks require completed human review, human-contributed field provenance, references, intended meaning, and group-aware split metadata. The 16 illustrative drafts are structurally valid but not eligible. |
-| Annotation and review workflow | Requires human contribution; workflow preparation pending | The schema and guidance describe draft and review metadata, but there is no safe draft/edit/review/export CLI workflow or audit history. A person must supply and attest to each review; software must not mark records reviewed on their behalf. |
+| Annotation and review workflow | Offline workflow implemented; human contribution required | `backend/scripts/annotation_workflow.py` scaffolds machine-labeled drafts, validates, checks readiness, records deterministic hash-linked revision manifests, and exports a whole ready dataset without overwriting. Human review/editing remains a manual task, and review claims are not authenticated. |
 | Dataset quality safeguards | Partly implemented; real-data validation pending | Structural checks cover duplicate IDs, malformed and duplicate-key JSON, tokenizer spans, field provenance consistency, and value constraints. Readiness detects split-group conflicts and exact normalized-source duplicates across splits. Paraphrase, shared-template, source-family, and semantic leakage still need human review and explicit group assignment. |
 | English reference translations and intended meanings | Requires human contribution | The schema and readiness checker support them. No eligible reviewed examples are present. Machine suggestions are not references or reviewed meanings. |
 | Dataset provenance and licensing | Requires human contribution | Provenance fields and guidance exist, but claims are not independently authenticated and source permissions have not been established for an evaluation corpus. |
@@ -41,7 +41,7 @@ Commands were run from the repository root on 2026-10-22:
 The following sequence is proposed from the actual repository state and the supplied continuation prompt:
 
 1. **6E.1 Research readiness audit:** recorded here.
-2. **6E.2 Annotation workflow:** provide safe draft validation and eligible-record export without assigning review metadata.
+2. **6E.2 Annotation workflow:** implemented in the offline CLI; the tool does not assign review metadata.
 3. **6E.3 Dataset quality safeguards:** close verified gaps in deterministic duplicate, split, group, and provenance diagnostics without rewriting annotations.
 4. **Phase 7 Provider adapter:** prepare a backward-compatible isolated adapter and mock-based tests; do not make external calls without explicit authorization.
 5. **Phase 8 Verified linguistic assistance:** implement provenance-aware resource infrastructure; production substitutions stay blocked until reviewed resources exist.
@@ -54,3 +54,7 @@ The following sequence is proposed from the actual repository state and the supp
 ## Research status
 
 The project has functioning evaluation software but no genuine eligible benchmark, verified linguistic transformation resource, real provider outputs, or human semantic-preservation judgments. Engineering verification is not empirical validation. Any research conclusion remains pending those inputs and the corresponding human review.
+
+## Phase 6E.2 verification
+
+The annotation workflow's focused suite passed 6 tests, and the full backend suite passed 217 tests (exit 0). Workflow CLI help exited 0. The illustrative dataset still validates structurally (exit 0; 16 draft warnings) and remains `NOT READY` (exit 1; 144 errors and 16 warnings). The added workflow did not change the dataset. `git diff --check` exited 0 before the checkpoint.
