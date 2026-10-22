@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.api.routes.analyze import router as analyze_router
 from app.api.dependencies import get_translation_provider
 from app.services.language_identification import configured_model_status
+from app.services.google_translation import google_translation_readiness
 from app.services.transliteration import configured_transliteration_status
 
 app = FastAPI(title="BhashaBridge 2.0", version="0.3.0", description="Whitespace normalization, Unicode tokenization, and conservative token-level language identification.")
@@ -25,6 +26,11 @@ def readiness(request: Request) -> dict[str, object]:
     model_status = configured_model_status()
     transliteration_status, transliteration_detail = configured_transliteration_status()
     translation_provider = get_translation_provider(request)
+    translation_status = (
+        google_translation_readiness()
+        if translation_provider is None
+        else None
+    )
     modules = [
         ModuleStatus(name="api", status="available", detail="FastAPI process is serving requests."),
         ModuleStatus(name="input_validation", status="available", detail="Analyze requests validate type, non-empty text, and maximum length."),
@@ -35,7 +41,12 @@ def readiness(request: Request) -> dict[str, object]:
         ModuleStatus(name="transliteration", status=transliteration_status, detail=transliteration_detail),
         ModuleStatus(name="linguistic_analysis", status="not_implemented", detail="POS tagging and NER are not implemented."),
         ModuleStatus(name="ambiguity_resolution", status="available", detail="One deterministic illustrative fixture rule is active; broader contextual interpretation is not validated."),
-        ModuleStatus(name="translation", status="configured" if translation_provider is not None else "not_configured", detail="An application-injected provider is available; requests are opt-in." if translation_provider is not None else "No translation provider is configured."),
+        ModuleStatus(
+            name="translation",
+            status="configured" if translation_provider is not None else translation_status.status,
+            detail="An application-injected provider is available; requests are opt-in."
+            if translation_provider is not None else translation_status.detail,
+        ),
         ModuleStatus(name="evaluation", status="not_implemented", detail="No evaluation runner or results exist."),
     ]
     return {"status": "degraded", "ready": False, "modules": [m.model_dump() for m in modules]}

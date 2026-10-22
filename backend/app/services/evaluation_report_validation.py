@@ -14,10 +14,14 @@ from app.services.evaluation_metrics import METRIC_CONFIGURATION
 ValidationStatus = Literal["VALID", "INVALID", "UNSUPPORTED_VERSION"]
 
 _OUTCOMES = {"success", "failed", "unavailable", "disabled", "missing", "invalid"}
-_FAILURES = {
+_LEGACY_FAILURES = {
     "provider_error", "invalid_provider_output", "provider_metadata_error",
     "mock_provider_test_only", "contradictory_provider_metadata",
     "incompatible_provider_configuration",
+}
+_FAILURES = _LEGACY_FAILURES | {
+    "provider_timeout", "provider_auth_error", "provider_quota_error",
+    "provider_request_error", "provider_response_error", "provider_configuration_error",
 }
 _ORDERS = {"direct_first", "assisted_first"}
 _TRACES = {"none", "direct", "assisted", "direct,assisted", "assisted,direct"}
@@ -29,6 +33,7 @@ _READINESS_CATEGORIES = {
 _EXCLUSION_CATEGORIES = _READINESS_CATEGORIES | {"dataset_not_ready", "outside_requested_split"}
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}$")
 _SAFE_PROVIDER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+_SAFE_PROVIDER_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
 _SECRET = re.compile(r"(?:api.?key|secret|token|password|^sk-)", re.IGNORECASE)
 _SAFE_LOCATION_PART = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _TOLERANCE = 1e-9
@@ -141,7 +146,7 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
         if set(arm.outcome_counts) != _OUTCOMES:
             add("outcome_keys", f"{base}.outcome_counts", "Outcome keys must match the supported report contract.")
             continue
-        if set(arm.failure_code_counts) != _FAILURES:
+        if set(arm.failure_code_counts) not in (_FAILURES, _LEGACY_FAILURES):
             add("failure_code_keys", f"{base}.failure_code_counts", "Failure-code keys must match the supported report contract.")
         for key, count in arm.outcome_counts.items():
             if count < 0:
@@ -201,6 +206,12 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
         for index, provider_id in enumerate(ids):
             if not _SAFE_PROVIDER.fullmatch(provider_id) or _SECRET.search(provider_id) or provider_id == "mock.test":
                 add("unsafe_provider_id", f"{base}.confirmed_provider_ids[{index}]", "Provider identifier is unsafe or test-only.")
+        model_ids = arm.confirmed_provider_models
+        if model_ids != sorted(set(model_ids)):
+            add("provider_models_not_canonical", f"{base}.confirmed_provider_models", "Confirmed provider models must be unique and sorted.")
+        for index, model_id in enumerate(model_ids):
+            if not _SAFE_PROVIDER_MODEL.fullmatch(model_id) or _SECRET.search(model_id):
+                add("unsafe_provider_model", f"{base}.confirmed_provider_models[{index}]", "Confirmed provider model metadata is unsafe.")
 
     if report.matched_output_pairs > min(
         report.arms["direct"].available_output_population.examples,

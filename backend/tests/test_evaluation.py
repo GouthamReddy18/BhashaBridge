@@ -16,7 +16,7 @@ from app.services.evaluation_readiness import check_evaluation_readiness
 from app.services.experiment import run_paired_experiment
 from app.services.preprocessing import normalize_whitespace
 from app.services.tokenization import tokenize
-from app.services.translation import MockTranslationProvider
+from app.services.translation import MockTranslationProvider, ProviderTranslation
 from scripts.evaluate_paired_experiment import main
 
 
@@ -119,6 +119,21 @@ class MetadataFailureProvider:
         raise AssertionError("translation must not be invoked")
 
 
+class ConfirmingModelProvider:
+    provider_id = "fixture.model-provider"
+    requested_model = "nmt"
+
+    def __init__(self, models_by_input=None):
+        self.models_by_input = models_by_input or {}
+
+    def translate(self, request):
+        raise AssertionError("configuration-aware path is expected")
+
+    def translate_configured(self, request, configuration):
+        model = self.models_by_input.get(request.text, "nmt")
+        return ProviderTranslation("A synthetic output.", confirmed_model=model)
+
+
 class InvalidOutputProvider:
     provider_id = "test.provider"
 
@@ -186,6 +201,29 @@ class EvaluationServiceTests(unittest.TestCase):
         self.assertEqual(report.eligible_records, 1)
         self.assertEqual(report.matched_output_pairs, 1)
         self.assertEqual(report.arms["direct"].available_output_population.examples, 1)
+
+    def test_confirmed_model_is_reported_and_requested_model_matches(self):
+        record = make_annotation(text=" nenu college ")
+        provider = ConfirmingModelProvider()
+        result = run_paired_experiment(record["text"], provider=provider)
+        artifact = PairedEvaluationArtifact(schema_version="1.0", example_id=record["id"], result=result)
+        report = self.evaluate([record], [artifact])
+        self.assertEqual(report.invalid_pair_records, 0)
+        self.assertEqual(report.arms["direct"].confirmed_provider_models, ["nmt"])
+        self.assertEqual(report.arms["assisted"].confirmed_provider_models, ["nmt"])
+        from app.services.evaluation_report_validation import validate_evaluation_report
+        self.assertEqual(validate_evaluation_report(report).status, "VALID")
+
+    def test_incompatible_confirmed_model_invalidates_pair_and_suppresses_scores(self):
+        record = make_annotation(text=" nenu college ")
+        provider = ConfirmingModelProvider({"nenu college": "different-model"})
+        result = run_paired_experiment(record["text"], provider=provider)
+        artifact = PairedEvaluationArtifact(schema_version="1.0", example_id=record["id"], result=result)
+        report = self.evaluate([record], [artifact])
+        self.assertEqual(report.invalid_pair_records, 1)
+        self.assertEqual(report.matched_output_pairs, 0)
+        self.assertEqual(report.arms["direct"].outcome_counts["invalid"], 1)
+        self.assertEqual(report.arms["direct"].failure_code_counts["incompatible_provider_configuration"], 1)
 
     def test_draft_and_missing_reference_are_blocking_without_scores(self):
         record = make_annotation()

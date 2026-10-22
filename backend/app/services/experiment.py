@@ -9,7 +9,11 @@ from app.schemas.experiment import (
 )
 from app.services.assisted_input import build_assisted_input
 from app.services.pipeline import analyze
-from app.services.translation import TranslationProvider, translate_text
+from app.services.translation import (
+    TranslationConfiguration,
+    TranslationProvider,
+    translate_text,
+)
 
 
 def run_paired_experiment(
@@ -22,6 +26,13 @@ def run_paired_experiment(
 ) -> PairedExperimentResult:
     """Run each arm in the configured order while retaining stable arm identity."""
     config = configuration or ExperimentConfiguration()
+    provider_model = (
+        getattr(provider, "requested_model", None)
+        if callable(getattr(provider, "translate_configured", None))
+        else None
+    )
+    if config.requested_model is None and isinstance(provider_model, str) and provider_model.strip():
+        config = config.model_copy(update={"requested_model": provider_model})
     analysis = analyze(
         AnalyzeRequest(text=original_input, translate=False),
         translation_provider=None,
@@ -49,7 +60,14 @@ def run_paired_experiment(
     invocation_order = []
     for arm_name in configured_order:
         outcome = translate_text(
-            intended_inputs[arm_name], requested=True, provider=provider
+            intended_inputs[arm_name],
+            requested=True,
+            provider=provider,
+            configuration=TranslationConfiguration(
+                target_language=config.target_language,
+                requested_model=config.requested_model,
+                generation_settings=config.requested_generation_settings,
+            ),
         )
         outcomes[arm_name] = outcome
         # input_text is set only after provider.translate was actually entered.
@@ -64,7 +82,8 @@ def run_paired_experiment(
             provider_input=outcome.input_text,
             translation=outcome,
             provider_confirmed=ProviderConfirmedMetadata(
-                provider_id=outcome.provider_id
+                provider_id=outcome.provider_id,
+                model=outcome.provider_model,
             ),
         )
 
@@ -82,5 +101,13 @@ def run_paired_experiment(
         ),
         same_provider_instance_supplied=provider is not None,
         invocation_order=invocation_order,
-        provider_configuration_forwarded=False,
+        provider_configuration_forwarded=all(
+            outcomes[arm].provider_configuration_forwarded is True
+            for arm in ("direct", "assisted")
+        ),
+        provider_protocol_note=(
+            "Both arms received the experiment settings through a configuration-aware provider."
+            if all(outcomes[arm].provider_configuration_forwarded is True for arm in ("direct", "assisted"))
+            else "At least one arm used a legacy text-only provider or did not reach configuration forwarding."
+        ),
     )

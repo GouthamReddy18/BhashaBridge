@@ -102,16 +102,20 @@ class TranslationResult(BaseModel):
     translated_text: str | None = None
     error_code: Literal[
         "provider_not_configured", "provider_metadata_error",
-        "provider_error", "invalid_provider_output",
+        "provider_error", "invalid_provider_output", "provider_timeout",
+        "provider_auth_error", "provider_quota_error", "provider_request_error",
+        "provider_response_error", "provider_configuration_error",
     ] | None = None
+    provider_model: str | None = None
+    provider_configuration_forwarded: bool | None = None
 
     @model_validator(mode="after")
     def validate_outcome(self) -> "TranslationResult":
         if self.status == "disabled":
-            if any(value is not None for value in (self.input_text, self.provider_id, self.translated_text, self.error_code)):
+            if any(value is not None for value in (self.input_text, self.provider_id, self.translated_text, self.error_code, self.provider_model, self.provider_configuration_forwarded)):
                 raise ValueError("disabled translation cannot contain provider data")
         elif self.status == "unavailable":
-            if self.input_text is not None or self.provider_id is not None or self.translated_text is not None:
+            if any(value is not None for value in (self.input_text, self.provider_id, self.translated_text, self.provider_model, self.provider_configuration_forwarded)):
                 raise ValueError("unavailable translation cannot claim provider input or output")
             if self.error_code != "provider_not_configured":
                 raise ValueError("unavailable translation requires provider_not_configured")
@@ -124,11 +128,17 @@ class TranslationResult(BaseModel):
                 or not self.translated_text.strip()
             ):
                 raise ValueError("successful translation requires input, provider, and nonblank output")
+            if self.provider_model is not None and not self.provider_model.strip():
+                raise ValueError("confirmed provider model must be nonblank when supplied")
             if self.error_code is not None:
                 raise ValueError("successful translation cannot contain an error")
         else:
             if self.translated_text is not None or self.error_code is None or self.error_code == "provider_not_configured":
                 raise ValueError("failed translation requires a provider failure and cannot contain output")
+            if self.provider_model is not None:
+                raise ValueError("failed translation cannot claim a confirmed provider model")
+            if self.error_code == "provider_configuration_error" and self.input_text is not None:
+                raise ValueError("provider configuration errors occur before provider invocation")
             if self.provider_id is None and self.error_code != "provider_metadata_error":
                 raise ValueError("failed translation without a provider identifier requires provider_metadata_error")
             if self.provider_id is not None and not self.provider_id.strip():

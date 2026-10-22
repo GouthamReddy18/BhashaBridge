@@ -87,7 +87,27 @@ class EvaluationReportValidationServiceTests(unittest.TestCase):
         value = copy.deepcopy(self.report)
         for name in ("per_example_comparisons", "human_semantic_preservation", "warnings"):
             value.pop(name)
+        for arm in value["arms"].values():
+            arm.pop("confirmed_provider_models", None)
         self.assertEqual(validate_evaluation_report(value).status, "VALID")
+
+    def test_legacy_phase_6d3_failure_counts_remain_valid(self):
+        value = copy.deepcopy(self.report)
+        for arm in value["arms"].values():
+            for code in (
+                "provider_timeout", "provider_auth_error", "provider_quota_error",
+                "provider_request_error", "provider_response_error", "provider_configuration_error",
+            ):
+                arm["failure_code_counts"].pop(code)
+            arm.pop("confirmed_provider_models", None)
+        self.assertEqual(validate_evaluation_report(value).status, "VALID")
+
+    def test_confirmed_model_metadata_is_sanitized_and_canonical(self):
+        value = copy.deepcopy(self.report)
+        value["arms"]["direct"]["confirmed_provider_models"] = ["sk-secret-token"]
+        result = validate_evaluation_report(value)
+        self.assertEqual(result.status, "INVALID")
+        self.assertNotIn("sk-secret-token", str(result))
 
     def test_valid_report_with_empty_warning_list(self):
         value = copy.deepcopy(self.report)

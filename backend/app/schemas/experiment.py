@@ -141,13 +141,13 @@ class ExperimentConfiguration(BaseModel):
 
 
 class ProviderConfirmedMetadata(BaseModel):
-    """The current text-only provider confirms only its identifier."""
+    """Provider-confirmed identity and any model returned by the provider."""
 
     model_config = ConfigDict(extra="forbid")
 
     provider_id: str | None = None
     target_language: None = None
-    model: None = None
+    model: str | None = None
 
 
 class ExperimentAnalysisTrace(BaseModel):
@@ -175,17 +175,27 @@ class TranslationArmResult(BaseModel):
             and self.provider_input is not None
         ):
             raise ValueError("provider metadata failure occurs before provider invocation")
-        if (
-            self.translation.error_code in {"provider_error", "invalid_provider_output"}
-            and self.provider_input is None
-        ):
+        if self.translation.error_code in {
+            "provider_error", "invalid_provider_output", "provider_timeout",
+            "provider_auth_error", "provider_quota_error", "provider_response_error",
+        } and self.provider_input is None:
             raise ValueError("provider-call failures must retain the attempted input")
         if self.provider_input is not None and self.provider_input != self.intended_input:
             raise ValueError("actual provider input must match intended arm input")
         if self.translation.provider_id != self.provider_confirmed.provider_id:
             raise ValueError("confirmed provider ID must match the translation result")
-        if self.provider_confirmed.target_language is not None or self.provider_confirmed.model is not None:
-            raise ValueError("text-only provider cannot confirm target language or model")
+        if self.translation.provider_model != self.provider_confirmed.model:
+            raise ValueError("confirmed model must match provider response metadata")
+        if self.provider_confirmed.target_language is not None:
+            raise ValueError("provider target language is not confirmed by the response")
+        if self.translation.error_code == "provider_configuration_error" and self.provider_input is not None:
+            raise ValueError("provider configuration errors occur before provider invocation")
+        if self.translation.error_code in {
+            "provider_error", "invalid_provider_output", "provider_timeout",
+            "provider_auth_error", "provider_quota_error", "provider_request_error",
+            "provider_response_error",
+        } and self.provider_input is None:
+            raise ValueError("provider-call failures must retain the attempted input")
         return self
 
 
@@ -198,9 +208,9 @@ class PairedExperimentResult(BaseModel):
     analysis: ExperimentAnalysisTrace
     same_provider_instance_supplied: bool
     invocation_order: list[Literal["direct", "assisted"]] = Field(default_factory=list)
-    provider_configuration_forwarded: Literal[False] = False
+    provider_configuration_forwarded: bool = False
     provider_protocol_note: str = (
-        "Text-only provider protocol does not accept target-language or generation settings."
+        "Legacy providers receive text only; configuration-aware providers receive explicit experiment settings."
     )
 
     @model_validator(mode="after")
@@ -239,6 +249,10 @@ class PairedExperimentResult(BaseModel):
             for arm in (self.direct, self.assisted):
                 if arm.translation.status == "unavailable":
                     raise ValueError("configured provider cannot be reported as unconfigured")
-        if self.provider_configuration_forwarded is not False:
-            raise ValueError("current provider protocol does not accept experiment configuration")
+        forwarded_by_arms = all(
+            getattr(self, arm).translation.provider_configuration_forwarded is True
+            for arm in ("direct", "assisted")
+        )
+        if self.provider_configuration_forwarded != forwarded_by_arms:
+            raise ValueError("provider_configuration_forwarded must reflect both arm outcomes")
         return self

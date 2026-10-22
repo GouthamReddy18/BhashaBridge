@@ -24,16 +24,25 @@ Split = Literal["train", "validation", "test"]
 OUTCOME_KEYS = ("success", "failed", "unavailable", "disabled", "missing", "invalid")
 FAILURE_CODES = (
     "provider_error", "invalid_provider_output", "provider_metadata_error",
+    "provider_timeout", "provider_auth_error", "provider_quota_error",
+    "provider_request_error", "provider_response_error", "provider_configuration_error",
     "mock_provider_test_only", "contradictory_provider_metadata",
     "incompatible_provider_configuration",
 )
 _SAFE_PROVIDER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
+_SAFE_PROVIDER_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
 _SECRET_MARKER = re.compile(r"(?:api.?key|secret|token|password|^sk-)", re.IGNORECASE)
 _SAFE_DATASET_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}$")
 
 
 def _safe_provider_id(value: str | None) -> str | None:
     if value is None or not _SAFE_PROVIDER_ID.fullmatch(value) or _SECRET_MARKER.search(value):
+        return None
+    return value
+
+
+def _safe_provider_model(value: str | None) -> str | None:
+    if value is None or not _SAFE_PROVIDER_MODEL.fullmatch(value) or _SECRET_MARKER.search(value):
         return None
     return value
 
@@ -140,6 +149,7 @@ def evaluate_paired_records(
                 outcome_counts={key: 0 for key in OUTCOME_KEYS},
                 failure_code_counts={code: 0 for code in FAILURE_CODES},
                 confirmed_provider_ids=[],
+                confirmed_provider_models=[],
                 attempted_invocations=0,
                 pre_invocation_failures=0,
                 available_output_population=_population("successful_nonblank_outputs", [], []),
@@ -180,6 +190,7 @@ def evaluate_paired_records(
         arm: {code: 0 for code in FAILURE_CODES} for arm in ("direct", "assisted")
     }
     providers: dict[str, set[str]] = {"direct": set(), "assisted": set()}
+    models: dict[str, set[str]] = {"direct": set(), "assisted": set()}
     attempted_invocations = {"direct": 0, "assisted": 0}
     pre_invocation_failures = {"direct": 0, "assisted": 0}
     execution_order_counts = {"direct_first": 0, "assisted_first": 0}
@@ -195,6 +206,7 @@ def evaluate_paired_records(
     invalid_pair_records = 0
     baseline_requested_configuration = None
     confirmed_provider_profile = None
+    confirmed_model_profile = None
 
     for example_id, row in sorted(eligible_by_id.items(), key=lambda item: str(item[0])):
         artifact = by_id.get(example_id)
@@ -227,6 +239,7 @@ def evaluate_paired_records(
             result.configuration.target_language,
             result.configuration.requested_model,
             tuple(sorted(result.configuration.requested_generation_settings.items())),
+            result.provider_configuration_forwarded,
         )
         provider_candidates = {value for value in (direct_provider, assisted_provider) if value is not None}
         configuration_mismatch = (
@@ -237,17 +250,46 @@ def evaluate_paired_records(
             confirmed_provider_profile is not None
             and any(value != confirmed_provider_profile for value in provider_candidates)
         )
+        successful_models = {
+            arm: getattr(result, arm).provider_confirmed.model
+            if getattr(result, arm).translation.status == "success" else None
+            for arm in ("direct", "assisted")
+        }
+        safe_models = {
+            arm: _safe_provider_model(model) if model is not None else None
+            for arm, model in successful_models.items()
+        }
+        unsafe_model_metadata = any(model is not None and safe_models[arm] is None for arm, model in successful_models.items())
+        arm_model_mismatch = (
+            safe_models["direct"] is not None
+            and safe_models["assisted"] is not None
+            and safe_models["direct"] != safe_models["assisted"]
+        )
+        requested_model_mismatch = (
+            result.provider_configuration_forwarded
+            and result.configuration.requested_model is not None
+            and any(model is not None and model != result.configuration.requested_model for model in safe_models.values())
+        )
+        model_profile_mismatch = (
+            confirmed_model_profile is not None
+            and any(model is not None and model != confirmed_model_profile for model in safe_models.values())
+        )
         if (
             result.original_input != row.get("text")
             or provider_mismatch
+            or arm_model_mismatch
+            or unsafe_model_metadata
+            or requested_model_mismatch
             or configuration_mismatch
             or provider_profile_mismatch
+            or model_profile_mismatch
         ):
             for arm in ("direct", "assisted"):
                 outcome_counts[arm]["invalid"] += 1
-                if provider_mismatch:
+                if provider_mismatch or arm_model_mismatch:
                     failure_counts[arm]["contradictory_provider_metadata"] += 1
-                if configuration_mismatch or provider_profile_mismatch:
+                if (configuration_mismatch or provider_profile_mismatch or model_profile_mismatch
+                        or requested_model_mismatch or unsafe_model_metadata):
                     failure_counts[arm]["incompatible_provider_configuration"] += 1
             invalid_pair_records += 1
             continue
@@ -255,6 +297,9 @@ def evaluate_paired_records(
             baseline_requested_configuration = requested_configuration
         if confirmed_provider_profile is None and provider_candidates:
             confirmed_provider_profile = sorted(provider_candidates)[0]
+        pair_models = {model for model in safe_models.values() if model is not None}
+        if confirmed_model_profile is None and pair_models:
+            confirmed_model_profile = sorted(pair_models)[0]
 
         successful: dict[str, tuple[str, str]] = {}
         for arm in ("direct", "assisted"):
@@ -267,6 +312,8 @@ def evaluate_paired_records(
             provider_id = _safe_provider_id(translation.provider_id)
             if provider_id and provider_id != "mock.test":
                 providers[arm].add(provider_id)
+            if translation.status == "success" and safe_models[arm] is not None:
+                models[arm].add(safe_models[arm])
             if translation.status == "success" and translation.translated_text:
                 successful[arm] = (row["reference_translation"], translation.translated_text)
                 available[arm].append((str(example_id), *successful[arm]))
@@ -322,7 +369,7 @@ def evaluate_paired_records(
         "Per-example metric order counts are exploratory and are not individual meaning judgments.",
         "No significance testing or human semantic-preservation aggregation is performed.",
         "Outputs from the project's mock.test provider are counted invalid and never scored.",
-        "The current provider contract confirms provider IDs only; model and target-language confirmation are unavailable.",
+        "Requested model settings are checked separately from provider-returned model metadata; target language is not provider-confirmed.",
     ]
     if failure_warnings:
         report_warnings.append(f"{failure_warnings} provider failures remain in operational counts; they were not scored.")
@@ -346,6 +393,7 @@ def evaluate_paired_records(
                 outcome_counts=outcome_counts[arm],
                 failure_code_counts=failure_counts[arm],
                 confirmed_provider_ids=sorted(providers[arm]),
+                confirmed_provider_models=sorted(models[arm]),
                 attempted_invocations=attempted_invocations[arm],
                 pre_invocation_failures=pre_invocation_failures[arm],
                 available_output_population=available_populations[arm],

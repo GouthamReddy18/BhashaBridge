@@ -65,6 +65,7 @@ class ArmEvaluationSummary(BaseModel):
     outcome_counts: dict[str, int]
     failure_code_counts: dict[str, int]
     confirmed_provider_ids: list[str]
+    confirmed_provider_models: list[str] = Field(default_factory=list)
     attempted_invocations: int = Field(ge=0)
     pre_invocation_failures: int = Field(ge=0)
     available_output_population: MetricPopulation

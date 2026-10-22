@@ -233,7 +233,7 @@ class ExperimentTests(unittest.TestCase):
         with self.assertRaises(ValidationError):
             PairedExperimentResult(**false_provider_state)
 
-    def test_text_only_protocol_rejects_provider_confirmed_target_or_model(self):
+    def test_provider_model_confirmation_must_match_provider_response(self):
         result = run_paired_experiment("nenu", provider=FakeProvider()).model_dump()
         bad = {**result, "direct": {**result["direct"], "provider_confirmed": {
             "provider_id": "fixture.fake", "target_language": "en", "model": "fake"
