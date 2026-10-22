@@ -1,0 +1,146 @@
+import json
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
+
+from pydantic import ValidationError
+
+from app.schemas.four_condition import FourConditionConfiguration
+from app.schemas.four_condition import ConditionResourceBinding
+from app.schemas.linguistic_resource import LinguisticResourceManifest
+from app.services.four_condition_experiment import _apply_mapping_rules, run_four_condition_experiment
+from app.services.four_condition_evaluation import (
+    evaluate_four_condition_records, validate_four_condition_report,
+)
+from app.services.evaluation_readiness import EvaluationReadinessReport
+from backend.tests.test_evaluation import make_annotation
+from scripts.evaluate_four_condition_experiment import main as evaluate_cli
+from scripts.validate_four_condition_report import main as validate_cli
+
+
+class FakeProvider:
+    provider_id = "fixture.fake"
+
+    def __init__(self):
+        self.inputs = []
+
+    def translate(self, request):
+        self.inputs.append(request.text)
+        from app.services.translation import ProviderTranslation
+        return ProviderTranslation("synthetic output")
+
+
+class FourConditionTests(unittest.TestCase):
+    @staticmethod
+    def normalizer_binding():
+        manifest = LinguisticResourceManifest.model_validate({
+            "schema_version": "1.0", "resource_id": "synthetic-normalizer",
+            "resource_version": "1", "provenance": "Synthetic test fixture only.",
+            "language_coverage": ["ENGLISH", "TELUGU_ROMANIZED"],
+            "rules": [{
+                "rule_id": "test.normalizer.nenu", "rule_version": "1",
+                "source_surface": "nenu", "source_language": "TELUGU_ROMANIZED",
+                "replacement": "nēnu", "replacement_language": "TELUGU_ROMANIZED",
+                "applicability": "exact_surface_and_language_match",
+                "provenance": "Synthetic test fixture only.",
+                "evidence_references": ["fixture:test"], "review_status": "reviewed",
+                "reviewer_id": "test", "reviewed_at": "2026-01-01",
+                "entity_preservation": "confirmed_non_entity",
+            }],
+        })
+        return ConditionResourceBinding(kind="normalizer", manifest=manifest, test_only=True)
+
+    def test_missing_resources_block_incremental_conditions_and_preserve_direct_input(self):
+        provider = FakeProvider()
+        config = FourConditionConfiguration(dataset_label="test-fixture", split="test")
+        artifact = run_four_condition_experiment(
+            "fixture-001", "  nenu   bank account  ", configuration=config,
+            provider=provider, allow_provider_calls=True, allow_test_fixtures=True,
+        )
+        self.assertEqual(provider.inputs, ["  nenu   bank account  "])
+        self.assertEqual(artifact.result.conditions[0].intended_provider_input, "  nenu   bank account  ")
+        self.assertEqual([c.status for c in artifact.result.conditions], ["completed", "blocked", "blocked", "blocked"])
+        self.assertEqual(artifact.result.conditions[1].blocked_reason, "resource_missing:normalizer")
+        self.assertEqual(artifact.result.conditions[2].blocked_reason, "dependency_blocked:normalized_v1")
+        self.assertTrue(artifact.result.test_fixture)
+        self.assertFalse(any(c.research_eligible for c in artifact.result.conditions))
+
+    def test_configuration_rejects_duplicate_or_incomplete_condition_order(self):
+        with self.assertRaises(ValidationError):
+            FourConditionConfiguration(
+                dataset_label="test", split="test",
+                execution_order=("direct_v1", "direct_v1", "transliterated_v1", "ambiguity_aware_v1"),
+            )
+
+    def test_mapping_preserves_whitespace_and_uses_source_codepoint_offsets(self):
+        source = "😀   nenu, bank"
+        output, changes, _, _ = _apply_mapping_rules(source, self.normalizer_binding())
+        self.assertEqual(output, "😀   nēnu, bank")
+        self.assertEqual(len(changes), 1)
+        self.assertEqual(source[changes[0].start:changes[0].end], "nenu")
+        self.assertEqual(changes[0].after, "nēnu")
+
+    def test_test_fixture_outcomes_are_never_scored_as_research(self):
+        annotation = make_annotation()
+        config = FourConditionConfiguration(dataset_label="test-fixture", split="test")
+        artifact = run_four_condition_experiment(
+            annotation["id"], annotation["text"], configuration=config,
+            provider=FakeProvider(), allow_provider_calls=True, allow_test_fixtures=True,
+        )
+        readiness = EvaluationReadinessReport(path="fixture", records_examined=1)
+        report = evaluate_four_condition_records(
+            dataset_label="test-fixture", split="test", annotation_rows=[(1, annotation)],
+            readiness=readiness, artifacts=[artifact], allow_test_fixtures=True,
+        )
+        self.assertEqual(report.report_status, "test_fixture_only")
+        self.assertEqual(report.variants["direct_v1"].available_examples, 0)
+        self.assertEqual(report.variants["direct_v1"].outcome_counts["test_fixture_only"], 1)
+        valid, errors = validate_four_condition_report(report.model_dump(mode="json"))
+        self.assertTrue(valid, errors)
+
+    def test_report_validator_rejects_inconsistent_comparison_references(self):
+        annotation = make_annotation()
+        config = FourConditionConfiguration(dataset_label="test-fixture", split="test")
+        artifact = run_four_condition_experiment(
+            annotation["id"], annotation["text"], configuration=config,
+            provider=None, allow_test_fixtures=True,
+        )
+        readiness = EvaluationReadinessReport(path="fixture", records_examined=1)
+        report = evaluate_four_condition_records(
+            dataset_label="test-fixture", split="test", annotation_rows=[(1, annotation)],
+            readiness=readiness, artifacts=[artifact],
+        ).model_dump(mode="json")
+        report["comparisons"][0]["numerator_condition"] = "ambiguity_aware_v1"
+        valid, errors = validate_four_condition_report(report)
+        self.assertFalse(valid)
+        self.assertTrue(any("condition references" in error for error in errors))
+
+    def test_synthetic_labeled_jsonl_runs_through_evaluator_and_report_cli(self):
+        annotation = make_annotation()
+        config = FourConditionConfiguration(dataset_label="synthetic-test-only", split="test")
+        artifact = run_four_condition_experiment(
+            annotation["id"], annotation["text"], configuration=config,
+            provider=None, allow_test_fixtures=True,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            annotations = root / "annotations.jsonl"
+            artifacts = root / "artifacts.jsonl"
+            report = root / "report.json"
+            annotations.write_text(json.dumps(annotation) + "\n", encoding="utf-8")
+            artifacts.write_text(json.dumps(artifact.model_dump(mode="json")) + "\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                status = evaluate_cli([
+                    "--annotations", str(annotations), "--artifacts", str(artifacts),
+                    "--dataset-label", "synthetic-test-only", "--split", "test",
+                    "--output", str(report), "--allow-test-fixtures",
+                ])
+                validation = validate_cli([str(report)])
+            self.assertEqual(status, 1)  # Fixture or readiness-blocked; never research-ready.
+            self.assertEqual(validation, 0)
+
+
+if __name__ == "__main__":
+    unittest.main()
