@@ -22,7 +22,9 @@ _LEGACY_FAILURES = {
 _FAILURES = _LEGACY_FAILURES | {
     "provider_timeout", "provider_auth_error", "provider_quota_error",
     "provider_request_error", "provider_response_error", "provider_configuration_error",
+    "split_metadata_mismatch",
 }
+_PRE_SPLIT_FAILURES = _FAILURES - {"split_metadata_mismatch"}
 _ORDERS = {"direct_first", "assisted_first"}
 _TRACES = {"none", "direct", "assisted", "direct,assisted", "assisted,direct"}
 _METRICS = {"bleu", "chrf"}
@@ -146,7 +148,7 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
         if set(arm.outcome_counts) != _OUTCOMES:
             add("outcome_keys", f"{base}.outcome_counts", "Outcome keys must match the supported report contract.")
             continue
-        if set(arm.failure_code_counts) not in (_FAILURES, _LEGACY_FAILURES):
+        if set(arm.failure_code_counts) not in (_FAILURES, _PRE_SPLIT_FAILURES, _LEGACY_FAILURES):
             add("failure_code_keys", f"{base}.failure_code_counts", "Failure-code keys must match the supported report contract.")
         for key, count in arm.outcome_counts.items():
             if count < 0:

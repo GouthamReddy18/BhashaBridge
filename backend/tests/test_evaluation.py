@@ -389,6 +389,15 @@ class EvaluationServiceTests(unittest.TestCase):
         self.assertEqual(report.arms["assisted"].outcome_counts["invalid"], 1)
         self.assertEqual(report.arms["direct"].available_output_population.examples, 0)
 
+    def test_artifact_split_mismatch_is_rejected(self):
+        annotation = make_annotation("split-check", "nenu college", split="test")
+        artifact = make_artifact(annotation).model_copy(update={"split": "train"})
+        report = self.evaluate([annotation], [artifact])
+        self.assertEqual(report.invalid_pair_records, 1)
+        self.assertEqual(report.arms["direct"].outcome_counts["invalid"], 1)
+        self.assertEqual(report.arms["direct"].failure_code_counts["split_metadata_mismatch"], 1)
+        self.assertEqual(report.matched_output_pairs, 0)
+
     def test_incompatible_provider_identity_invalidates_pair_without_mixing_scores(self):
         first = make_annotation("first", " nenu   college ", group="g1")
         second = make_annotation("second", " nenu   office ", group="g2")

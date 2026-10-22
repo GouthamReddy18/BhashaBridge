@@ -13,6 +13,7 @@ class PairedEvaluationArtifact(BaseModel):
 
     schema_version: Literal["1.0"]
     example_id: StrictStr
+    split: Literal["train", "validation", "test"] | None = None
     result: PairedExperimentResult
 
     @field_validator("example_id")

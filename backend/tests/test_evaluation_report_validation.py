@@ -97,6 +97,7 @@ class EvaluationReportValidationServiceTests(unittest.TestCase):
             for code in (
                 "provider_timeout", "provider_auth_error", "provider_quota_error",
                 "provider_request_error", "provider_response_error", "provider_configuration_error",
+                "split_metadata_mismatch",
             ):
                 arm["failure_code_counts"].pop(code)
             arm.pop("confirmed_provider_models", None)

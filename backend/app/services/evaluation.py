@@ -28,6 +28,7 @@ FAILURE_CODES = (
     "provider_request_error", "provider_response_error", "provider_configuration_error",
     "mock_provider_test_only", "contradictory_provider_metadata",
     "incompatible_provider_configuration",
+    "split_metadata_mismatch",
 )
 _SAFE_PROVIDER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
 _SAFE_PROVIDER_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
@@ -215,6 +216,12 @@ def evaluate_paired_records(
                 outcome_counts[arm]["missing"] += 1
             continue
         result = artifact.result
+        if artifact.split is not None and artifact.split != row.get("split"):
+            for arm in ("direct", "assisted"):
+                outcome_counts[arm]["invalid"] += 1
+                failure_counts[arm]["split_metadata_mismatch"] += 1
+            invalid_pair_records += 1
+            continue
         execution_order_counts[result.configuration.execution_order] += 1
         invocation_trace = ",".join(result.invocation_order) or "none"
         invocation_trace_counts[invocation_trace] += 1
