@@ -29,6 +29,8 @@ The experiment trace distinguishes intended arm text from actual provider input;
 
 Phase 6D.1 defines the evaluation protocol and checks dataset readiness metadata. Phase 6D.2 adds a versioned in-project corpus BLEU/chrF implementation and report CLI. The readiness checker cannot authenticate reviewer identity, validate linguistic correctness or licensing, or automatically detect paraphrase/template leakage. The 16 synthetic draft records remain ineligible, and no real benchmark scores, human semantic scores, significance tests, or empirical improvement claims are available. The metrics are reference-based proxies and use a project-specific configuration; they are not interchangeable with other metric implementations. Human rating aggregation and real-provider evaluation remain future work. See [the evaluation protocol](evaluation_protocol.md).
 
+Phase 6D.3 validates saved report structure and internal consistency under the supported Phase 6D.2 contract. **A VALID report establishes structural and internal consistency under the supported contract. It does not authenticate dataset provenance, independently verify original translation outputs, prove metric correctness without source artifacts, or establish semantic improvement.** The validator does not recompute corpus metrics, infer mock-provider use where the report lacks identity, authenticate provider IDs, or create research results.
+
 Applying synthetic test transformations does not count as meaningful linguistic assistance or establish research efficacy. meaningful_assistance remains false until an independently reviewed production transformation mechanism is implemented.
 
 
