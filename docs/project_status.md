@@ -4,6 +4,8 @@
 
 The four-condition framework is implemented, but a genuine evaluation is **not ready**. No reviewed evaluation dataset, qualified normalization/transliteration/context resource, real provider artifact, or human rating is present. The 16-row illustrative draft remains structurally valid and intentionally ineligible. Phase 16 records the resource inventory and fixes evaluator fixture-taint gaps; no linguistic resource, annotation, rating, or research result was created. See [Phase 16 audit](phase16-research-readiness.md). The prior status below is retained as a historical engineering checkpoint; its statement that the current experiment framework is only two-arm is superseded by Phase 15.
 
+Phase 17 documents acquisition, rights review, annotation/adjudication, leakage controls, exclusions, and a promotion checklist in [the dataset acquisition and review guide](dataset-acquisition-and-review.md). The annotation schema remains at version 1.0; source/reference language scope is specified in release metadata because dedicated language-code fields are absent. No dataset records or review declarations were created.
+
 **Status checked:** 2026-10-22\
 **Checkpoint:** Phase 12 implementation commit `29aa426`; integration QA and delivery documentation verified on 2026-10-22.\
 **Roadmap note:** No independent master implementation roadmap was found in the repository. The later phase labels in the continuation prompt are proposed engineering stages, not verified original roadmap labels.

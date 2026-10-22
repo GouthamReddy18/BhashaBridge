@@ -65,6 +65,8 @@ This rubric is the project's declared protocol for human ratings. Phase 10 adds 
 
 Raters should assess meaning rather than fluency alone, record uncertainty, and cite the affected span or proposition when scores differ. Use independent assessments where feasible; preserve raw ratings, adjudication decisions, and reasons. Report disagreements. Do not calculate inter-rater agreement statistics until actual independent ratings exist.
 
+When applying the proposed rubric, consider core event and participant roles, negation, modality, tense/aspect and communicative intent where relevant, named entities, code-mixed expressions, contextual meaning, material omissions, and unsupported additions. Judge errors by their impact on the intended meaning; harmless paraphrase or grammar variation alone is not a semantic error. Record the affected span/proposition and uncertainty. The existing rating schema stores only one 0–4 score per output, so these dimensions guide the judgment and are not separately scored. Pilot the instructions and independent agreement before treating the rubric as validated.
+
 ### Operational and behavior counts
 
 Report eligible example count; attempted, successful, failed, and unavailable translations per arm; paired completion count; and incomplete-pair reasons. Separately report assisted-input category counts (identity, normalization-only, fallback, synthetic fixture, and any future authorized assistance), ambiguity-resolution coverage, resolved count, and abstention count. Operational completion is not translation quality or semantic preservation.

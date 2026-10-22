@@ -34,7 +34,7 @@ Unknown language identification and semantic ambiguity are separate: an unknown 
 
 ## Reference translation
 
-`reference_translation` is nullable. Add a translation only when a qualified annotator supplies and reviews it with an appropriate provenance source. Preserve uncertainty and explain disagreements; do not generate translations just to fill the field. A transliteration, paraphrase, or machine suggestion is not a reference translation.
+`reference_translation` is nullable. Add a translation only when a qualified annotator supplies and reviews it with an appropriate provenance source. Preserve uncertainty and explain disagreements; do not generate translations just to fill the field. A transliteration, paraphrase, or machine suggestion is not a reference translation. Prepare and review the reference before experimental outputs exist; reference annotators should not see condition outputs or favor a condition's wording. Record the reference language (English for this study) in the dataset release record because schema version 1.0 has no dedicated language-code fields.
 
 For future semantic-preservation evaluation, `intended_meaning` records the reviewed interpretation that raters should preserve. Supply field-level provenance and a source reference. Keep it null when not established; the evaluation-readiness checker requires a reviewed, human-contributed meaning before benchmark use. This metadata does not establish that the interpretation is correct.
 
