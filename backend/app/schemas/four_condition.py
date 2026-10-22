@@ -7,7 +7,7 @@ import math
 import re
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictStr, field_validator, model_validator
 
 from app.schemas.analysis import AmbiguityRecord, TranslationResult
 from app.schemas.linguistic_resource import LinguisticResourceManifest
@@ -38,7 +38,8 @@ class ConditionResourceBinding(BaseModel):
 
     kind: ResourceKind
     manifest: LinguisticResourceManifest
-    test_only: bool = False
+    # Required even when false: omitted taint metadata must not silently become eligible.
+    test_only: StrictBool
     contextual_mappings: tuple[ContextualRuleMapping, ...] = ()
 
     @model_validator(mode="after")
@@ -294,6 +295,8 @@ class FourConditionArtifact(BaseModel):
 
     @model_validator(mode="after")
     def validate_artifact(self):
+        from app.services.linguistic_resources import resource_readiness
+
         if not self.example_id.strip():
             raise ValueError("example_id must be nonblank")
         if self.split != self.configuration.split:
@@ -304,6 +307,111 @@ class FourConditionArtifact(BaseModel):
             raise ValueError("artifact source must match condition source")
         if any(item.research_eligible for item in self.result.conditions) and self.result.test_fixture:
             raise ValueError("test artifacts cannot contain research-eligible conditions")
+        requirements = {
+            "direct_v1": (),
+            "normalized_v1": ("normalizer",),
+            "transliterated_v1": ("normalizer", "transliterator"),
+            "ambiguity_aware_v1": ("normalizer", "transliterator", "contextual_transformer"),
+        }
+        used_test_resource = False
+        completed_by_id = {item.condition_id: item for item in self.result.conditions}
+        for condition in self.result.conditions:
+            required = requirements[condition.condition_id]
+            if condition.status != "completed":
+                if condition.research_eligible:
+                    raise ValueError("blocked or failed conditions cannot be research-eligible")
+                continue
+            if any(completed_by_id[dependency].status != "completed" for dependency in condition.dependencies):
+                raise ValueError("completed condition cannot bypass a blocked or failed prerequisite")
+            if any(kind not in self.configuration.resources for kind in required):
+                if condition.condition_id != "direct_v1":
+                    raise ValueError("completed condition is missing a required configured resource")
+            expected_stages = required
+            if tuple(stage.stage for stage in condition.stages) != expected_stages:
+                if condition.condition_id != "direct_v1":
+                    raise ValueError("completed condition stage trace does not match its registered prerequisites")
+            expected_references = []
+            for kind, stage in zip(required, condition.stages):
+                binding = self.configuration.resources[kind]
+                if resource_readiness(binding.manifest):
+                    raise ValueError("completed condition uses a resource that is not review-ready by declared metadata")
+                prefix = "test-only:" if binding.test_only else "resource:"
+                expected_references.append(
+                    f"{prefix}{kind}/{binding.manifest.resource_id}@{binding.manifest.resource_version}"
+                )
+                if (
+                    stage.status != "completed"
+                    or stage.resource_id != binding.manifest.resource_id
+                    or stage.resource_version != binding.manifest.resource_version
+                    or stage.resource_fingerprint != binding.fingerprint
+                ):
+                    raise ValueError("condition stage resource metadata does not match the bound manifest")
+                used_test_resource = used_test_resource or binding.test_only
+                rules = {rule.rule_id: rule for rule in binding.manifest.rules}
+                edits = []
+                for transformation in condition.transformations:
+                    if transformation.operation != kind:
+                        continue
+                    rule = rules.get(transformation.rule_id)
+                    if (
+                        rule is None
+                        or transformation.resource_id != binding.manifest.resource_id
+                        or transformation.resource_version != binding.manifest.resource_version
+                        or transformation.rule_version != rule.rule_version
+                        or transformation.before.casefold() != rule.source_surface.casefold()
+                        or transformation.after != rule.replacement
+                        or transformation.end > len(stage.input_text)
+                        or stage.input_text[transformation.start:transformation.end] != transformation.before
+                    ):
+                        raise ValueError("transformation trace does not match its stage input and bound resource rule")
+                    if kind == "contextual_transformer":
+                        mapping = next((item for item in binding.contextual_mappings
+                                        if item.rule_id == transformation.rule_id
+                                        and item.ambiguity_rule_id == transformation.ambiguity_rule_id
+                                        and item.candidate_id == transformation.candidate_id), None)
+                        decision = next((item for item in stage.ambiguity_decisions
+                                         if item.rule_id == transformation.ambiguity_rule_id
+                                         and item.selected_candidate == transformation.candidate_id
+                                         and item.token_index == transformation.token_index
+                                         and item.status == "resolved"), None)
+                        if mapping is None or decision is None or transformation.context_evidence != decision.evidence:
+                            raise ValueError("contextual transformation is not bound to a resolved recorded decision")
+                    elif transformation.ambiguity_rule_id is not None or transformation.candidate_id is not None:
+                        raise ValueError("non-contextual transformations cannot claim ambiguity decisions")
+                    edits.append((transformation.start, transformation.end, transformation.after))
+                if len(edits) != stage.applied_transformations:
+                    raise ValueError("stage transformation count does not match the trace")
+                ordered = sorted(edits, reverse=True)
+                for left, right in zip(ordered, ordered[1:]):
+                    if right[1] > left[0]:
+                        raise ValueError("stage transformations overlap")
+                reconstructed = stage.input_text
+                for start, end, replacement in ordered:
+                    reconstructed = reconstructed[:start] + replacement + reconstructed[end:]
+                if reconstructed != stage.output_text:
+                    raise ValueError("stage output cannot be reconstructed from its transformation trace")
+            if tuple(condition.resource_references) != tuple(expected_references):
+                raise ValueError("condition resource references do not match the bound configuration")
+            if condition.research_eligible:
+                if any(self.configuration.resources[kind].test_only for kind in required):
+                    raise ValueError("test-only resources cannot produce research-eligible conditions")
+                if condition.condition_id != "direct_v1" and any(
+                    resource_readiness(self.configuration.resources[kind].manifest) for kind in required
+                ):
+                    raise ValueError("research-eligible condition requires ready resource declarations")
+        has_mock_provider = any(
+            condition.translation is not None and condition.translation.provider_id == "mock.test"
+            for condition in self.result.conditions
+        )
+        from app.services.google_translation import PROVIDER_ID as VERIFIED_PROVIDER_ID
+        unverified_provider = any(
+            condition.translation is not None
+            and condition.translation.provider_id is not None
+            and condition.translation.provider_id != VERIFIED_PROVIDER_ID
+            for condition in self.result.conditions
+        )
+        if (used_test_resource or has_mock_provider or unverified_provider) and not self.result.test_fixture:
+            raise ValueError("test-only resources and unverified/mock provider traces must retain artifact fixture taint")
         return self
 
 

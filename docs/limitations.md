@@ -37,6 +37,12 @@ Phase 8 adds a versioned resource-manifest validator and an exact-match, fail-cl
 
 Phase 10 adds a pending human-rating workflow and descriptive coverage/distribution output. No human ratings have been collected; reviewer declarations are unauthenticated, blind keys require coordinator protection, inter-rater agreement is not implemented, and ratings are not embedded in Phase 6D.2 reports.
 
+## Phase 15–16 research-readiness status
+
+The four-condition schemas and orchestration are implemented, but no condition beyond the exact-input direct baseline is executable with a research-eligible resource in the current checkout. There is no qualified Telugu-English normalizer, transliteration engine, contextual transformation resource, reviewed benchmark, real output artifact, or human rating. The optional IndicLID branch is unconfigured and its token-level use is unvalidated. The only implemented external translation adapter is Google Cloud Translation Basic v2; it is disabled and unconfigured, and Romanized Telugu suitability is unestablished. No provider calls or resource downloads were made for this audit.
+
+Phase 16 closes a concrete fixture-scoring gap: evaluators now reject successful outputs unless their provider identity is the repository's currently registered Google adapter. The legacy human-rating task workflow applies the same check. This identity check prevents ordinary unknown fake adapters from being treated as research outputs, but it does not authenticate a manually forged artifact or a claimed provider identity. Dataset review declarations and resource review metadata also remain unauthenticated. A valid report is an internally consistent document, not proof of experimental evidence. See [the Phase 16 research-readiness audit](phase16-research-readiness.md) for the inventory, findings, blockers, and a minimal path to the first valid study.
+
 
 ### Phase 6C execution-order limits
 

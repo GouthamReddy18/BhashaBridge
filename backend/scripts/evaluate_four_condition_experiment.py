@@ -19,13 +19,12 @@ def main(argv=None):
     parser.add_argument("--dataset-label", required=True)
     parser.add_argument("--split", required=True, choices=("train", "validation", "test"))
     parser.add_argument("--output", required=True, help="new report path; existing files are never overwritten")
-    parser.add_argument("--allow-test-fixtures", action="store_true", help="accept explicitly test-labeled artifacts; they remain unscored")
     args = parser.parse_args(argv)
     destination = Path(args.output)
     try:
         report = evaluate_four_condition_files(
             args.annotations, args.artifacts, dataset_label=args.dataset_label,
-            split=args.split, allow_test_fixtures=args.allow_test_fixtures,
+            split=args.split,
         )
         valid, errors = validate_four_condition_report(report.model_dump(mode="json"))
         if not valid:

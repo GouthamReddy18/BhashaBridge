@@ -67,7 +67,7 @@ def make_annotation(example_id="fixture-001", text="nenu college", split="test",
 
 
 class MappingProvider:
-    provider_id = "test.provider"
+    provider_id = "google.cloud.translation.basic.v2"
 
     def __init__(self, outputs=None, error=False):
         self.outputs = outputs or {}
@@ -120,7 +120,7 @@ class MetadataFailureProvider:
 
 
 class ConfirmingModelProvider:
-    provider_id = "fixture.model-provider"
+    provider_id = "google.cloud.translation.basic.v2"
     requested_model = "nmt"
 
     def __init__(self, models_by_input=None):
@@ -135,7 +135,7 @@ class ConfirmingModelProvider:
 
 
 class InvalidOutputProvider:
-    provider_id = "test.provider"
+    provider_id = "google.cloud.translation.basic.v2"
 
     def translate(self, request):
         return object()
@@ -201,6 +201,19 @@ class EvaluationServiceTests(unittest.TestCase):
         self.assertEqual(report.eligible_records, 1)
         self.assertEqual(report.matched_output_pairs, 1)
         self.assertEqual(report.arms["direct"].available_output_population.examples, 1)
+
+    def test_unregistered_provider_successes_are_never_scored(self):
+        record = make_annotation()
+        artifact = make_artifact(record)
+        result = artifact.result
+        for arm in ("direct", "assisted"):
+            arm_result = getattr(result, arm)
+            arm_result.translation.provider_id = "fixture.fake"
+            arm_result.provider_confirmed.provider_id = "fixture.fake"
+        report = self.evaluate([record], [artifact])
+        self.assertEqual(report.matched_output_pairs, 0)
+        self.assertEqual(report.arms["direct"].outcome_counts["invalid"], 1)
+        self.assertEqual(report.arms["direct"].failure_code_counts["unregistered_provider_test_only"], 1)
 
     def test_confirmed_model_is_reported_and_requested_model_matches(self):
         record = make_annotation(text=" nenu college ")

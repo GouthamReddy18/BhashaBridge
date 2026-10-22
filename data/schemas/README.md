@@ -1,3 +1,3 @@
-# Illustrative schema v1.0
+# Annotation schemas
 
-Each JSONL row has `schema_version`, `id`, `text`, nullable `reference_en`, `tokens` (future token annotations), `ambiguities` (future span annotations), `annotator_notes`, and `split`. Empty annotations mean unannotated, not negative labels. `illustrative` is not an experimental split.
+The canonical annotation record contract is [`data/schema/annotation.schema.json`](../schema/annotation.schema.json), version 1.0, with additional JSONL-wide and cross-field validation in `backend/app/services/dataset_validation.py`. The fields and requirements in that current contract supersede any older examples or field names. In particular, references use `reference_translation`, records use `annotation_version`, and `split` is optional in structurally valid drafts but required by the separate evaluation-readiness check. Empty annotations mean unannotated, not negative labels. `illustrative` is not an experimental split.

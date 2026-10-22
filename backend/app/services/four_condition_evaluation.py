@@ -59,7 +59,6 @@ def evaluate_four_condition_records(
     annotation_rows: Sequence[tuple[int, dict]],
     readiness: EvaluationReadinessReport,
     artifacts: Sequence[FourConditionArtifact],
-    allow_test_fixtures: bool = False,
 ) -> FourConditionEvaluationReport:
     """Score only eligible IDs, retaining blocked and unavailable conditions."""
     if dataset_label.strip() == "" or len(dataset_label) > 80:
@@ -73,10 +72,17 @@ def evaluate_four_condition_records(
             raise FourConditionEvaluationError("annotation IDs must be nonblank and unique")
         annotation_by_id[example_id] = row
     by_id = {}
+    validated_artifacts = []
     for artifact in artifacts:
+        try:
+            artifact = FourConditionArtifact.model_validate(artifact.model_dump(mode="python"))
+        except (ValidationError, AttributeError, TypeError):
+            raise FourConditionEvaluationError("four-condition artifact failed integrity validation") from None
+        validated_artifacts.append(artifact)
         if artifact.example_id in by_id:
             raise FourConditionEvaluationError("duplicate four-condition artifact IDs")
         by_id[artifact.example_id] = artifact
+    artifacts = validated_artifacts
     selected = {key: row for key, row in annotation_by_id.items() if row.get("split") == split}
     if any(key not in annotation_by_id for key in by_id):
         raise FourConditionEvaluationError("artifacts contain IDs absent from the annotation dataset")
@@ -104,6 +110,8 @@ def evaluate_four_condition_records(
     test_fixture_report = False
     known_provider = None
     known_model = None
+    known_forwarding = None
+    has_known_forwarding = False
     invalid_ids: set[str] = set()
 
     # Validate row/source and provider consistency before assigning any score.
@@ -126,7 +134,7 @@ def evaluate_four_condition_records(
                 continue
             if translation.provider_id:
                 provider_ids.add(translation.provider_id)
-            if translation.provider_configuration_forwarded is not None:
+            if translation.input_text is not None:
                 forwarding_values.add(translation.provider_configuration_forwarded)
             if translation.status == "success" and translation.provider_id:
                 if translation.provider_model:
@@ -135,6 +143,13 @@ def evaluate_four_condition_records(
             malformed = True
         if len(forwarding_values) > 1:
             malformed = True
+        if forwarding_values:
+            forwarding = next(iter(forwarding_values))
+            if has_known_forwarding and forwarding != known_forwarding:
+                malformed = True
+            elif not has_known_forwarding:
+                known_forwarding = forwarding
+                has_known_forwarding = True
         if provider_models and result.configuration.requested_model is not None and forwarding_values == {True}:
             if any(model != result.configuration.requested_model for model in provider_models):
                 malformed = True
@@ -183,7 +198,7 @@ def evaluate_four_condition_records(
                 counts[condition_id]["mock_provider_output"] += 1
                 test_fixture_report = True
             elif translation.status == "success":
-                if not condition.research_eligible and not allow_test_fixtures:
+                if not condition.research_eligible:
                     counts[condition_id]["test_fixture_only"] += 1
                     test_fixture_report = True
                     continue
@@ -369,7 +384,7 @@ def validate_four_condition_report(value: object):
 def evaluate_four_condition_files(
     annotations_path: str | Path,
     artifacts_path: str | Path,
-    *, dataset_label: str, split: str, allow_test_fixtures: bool = False,
+    *, dataset_label: str, split: str,
 ) -> FourConditionEvaluationReport:
     from app.services.dataset_validation import _unique_object_pairs, validate_dataset
     from app.services.evaluation_readiness import check_evaluation_readiness
@@ -403,5 +418,4 @@ def evaluate_four_condition_files(
     return evaluate_four_condition_records(
         dataset_label=dataset_label, split=split, annotation_rows=rows,
         readiness=readiness, artifacts=artifacts,
-        allow_test_fixtures=allow_test_fixtures,
     )

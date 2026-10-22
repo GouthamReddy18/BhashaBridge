@@ -19,6 +19,7 @@ from app.schemas.evaluation import (
 )
 from app.services.evaluation_metrics import METRIC_CONFIGURATION, corpus_bleu, corpus_chrf
 from app.services.evaluation_readiness import EvaluationReadinessReport
+from app.services.google_translation import PROVIDER_ID as RESEARCH_PROVIDER_ID
 
 Split = Literal["train", "validation", "test"]
 OUTCOME_KEYS = ("success", "failed", "unavailable", "disabled", "missing", "invalid")
@@ -26,7 +27,7 @@ FAILURE_CODES = (
     "provider_error", "invalid_provider_output", "provider_metadata_error",
     "provider_timeout", "provider_auth_error", "provider_quota_error",
     "provider_request_error", "provider_response_error", "provider_configuration_error",
-    "mock_provider_test_only", "contradictory_provider_metadata",
+    "mock_provider_test_only", "unregistered_provider_test_only", "contradictory_provider_metadata",
     "incompatible_provider_configuration",
     "split_metadata_mismatch",
 )
@@ -337,13 +338,14 @@ def evaluate_paired_records(
         successful: dict[str, tuple[str, str]] = {}
         for arm in ("direct", "assisted"):
             translation = getattr(result, arm).translation
-            if translation.status == "success" and translation.provider_id == "mock.test":
+            if translation.status == "success" and translation.provider_id != RESEARCH_PROVIDER_ID:
                 outcome_counts[arm]["invalid"] += 1
-                failure_counts[arm]["mock_provider_test_only"] += 1
+                code = "mock_provider_test_only" if translation.provider_id == "mock.test" else "unregistered_provider_test_only"
+                failure_counts[arm][code] += 1
                 continue
             outcome_counts[arm][translation.status] += 1
             provider_id = _safe_provider_id(translation.provider_id)
-            if provider_id and provider_id != "mock.test":
+            if provider_id == RESEARCH_PROVIDER_ID:
                 providers[arm].add(provider_id)
             if translation.status == "success" and safe_models[arm] is not None:
                 models[arm].add(safe_models[arm])

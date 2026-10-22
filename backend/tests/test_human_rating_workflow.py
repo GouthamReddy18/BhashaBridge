@@ -40,7 +40,7 @@ def reviewed_fixture():
 
 
 class Provider:
-    provider_id = "fixture.rating-provider"
+    provider_id = "google.cloud.translation.basic.v2"
     def translate(self, request):
         return ProviderTranslation("Synthetic output; test only.")
 
@@ -88,6 +88,25 @@ class HumanRatingWorkflowTests(unittest.TestCase):
                              {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0})
             self.assertEqual(report["arms"]["direct"]["missing_or_insufficiently_reviewed_examples"], 1)
             self.assertEqual(report["inter_annotator_agreement"]["status"], "not_calculated")
+
+    def test_unregistered_provider_cannot_enter_rating_tasks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            row = reviewed_fixture()
+            annotations, pairs = root / "data.jsonl", root / "pairs.jsonl"
+            annotations.write_text(json.dumps(row) + "\n", encoding="utf-8")
+            result = run_paired_experiment(row["text"], provider=Provider())
+            for arm in ("direct", "assisted"):
+                arm_result = getattr(result, arm)
+                arm_result.translation = arm_result.translation.model_copy(update={"provider_id": "fixture.fake"})
+                arm_result.provider_confirmed = arm_result.provider_confirmed.model_copy(update={"provider_id": "fixture.fake"})
+            paired = PairedEvaluationArtifact(schema_version="1.0", example_id=row["id"], split="test", result=result)
+            pairs.write_text(paired.model_dump_json() + "\n", encoding="utf-8")
+            with self.assertRaisesRegex(RatingWorkflowError, "unregistered provider"):
+                create_rating_tasks(
+                    annotations, pairs, split="test", tasks_output=root / "tasks.jsonl",
+                    ratings_output=root / "ratings.jsonl",
+                )
 
     def test_blinded_tasks_separate_mapping_and_aggregate_by_actual_arm(self):
         with tempfile.TemporaryDirectory() as directory:

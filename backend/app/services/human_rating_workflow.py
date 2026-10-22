@@ -11,6 +11,7 @@ from app.schemas.evaluation import PairedEvaluationArtifact
 from app.schemas.human_rating import HumanRatingRecord
 from app.services.dataset_validation import _unique_object_pairs, validate_dataset
 from app.services.evaluation_readiness import check_evaluation_readiness
+from app.services.google_translation import PROVIDER_ID as RESEARCH_PROVIDER_ID
 
 RUBRIC_VERSION = "semantic-preservation-0-4.v1"
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}$")
@@ -86,8 +87,12 @@ def create_rating_tasks(annotations, paired_results, *, split, tasks_output, rat
                 raise RatingWorkflowError("paired artifact split conflicts with annotation")
             if artifact.result.original_input != row["text"]:
                 raise RatingWorkflowError("paired artifact source conflicts with annotation")
-            if any(getattr(artifact.result, arm).translation.provider_id == "mock.test" for arm in ("direct", "assisted")):
-                raise RatingWorkflowError("mock.test outputs cannot enter human-rating tasks")
+            if any(
+                (outcome := getattr(artifact.result, arm).translation).status == "success"
+                and outcome.provider_id != RESEARCH_PROVIDER_ID
+                for arm in ("direct", "assisted")
+            ):
+                raise RatingWorkflowError("unregistered provider outputs cannot enter human-rating tasks")
         arms = ["direct", "assisted"]
         labels = {"direct": "direct", "assisted": "assisted"}
         if blinded:

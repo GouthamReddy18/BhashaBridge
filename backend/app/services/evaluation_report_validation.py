@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, StrictStr, ValidationError
 
 from app.schemas.evaluation import EvaluationReport, MetricConfiguration
 from app.services.evaluation_metrics import METRIC_CONFIGURATION
+from app.services.google_translation import PROVIDER_ID as RESEARCH_PROVIDER_ID
 
 ValidationStatus = Literal["VALID", "INVALID", "UNSUPPORTED_VERSION"]
 
@@ -17,6 +18,7 @@ _OUTCOMES = {"success", "failed", "unavailable", "disabled", "missing", "invalid
 _LEGACY_FAILURES = {
     "provider_error", "invalid_provider_output", "provider_metadata_error",
     "mock_provider_test_only", "contradictory_provider_metadata",
+    "unregistered_provider_test_only",
     "incompatible_provider_configuration",
 }
 _FAILURES = _LEGACY_FAILURES | {
@@ -179,6 +181,8 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
                 add("negative_count", f"{base}.failure_code_counts" + _safe_location_part(key), "Counts must be nonnegative integers.")
         if arm.failure_code_counts.get("mock_provider_test_only", 0) > arm.outcome_counts.get("invalid", 0):
             add("mock_provider_outcome_mismatch", f"{base}.failure_code_counts.mock_provider_test_only", "Mock-provider successes must be counted as invalid outcomes, never successful evidence.")
+        if arm.failure_code_counts.get("unregistered_provider_test_only", 0) > arm.outcome_counts.get("invalid", 0):
+            add("unregistered_provider_outcome_mismatch", f"{base}.failure_code_counts.unregistered_provider_test_only", "Unregistered-provider successes must be counted as invalid outcomes, never successful evidence.")
         if sum(arm.outcome_counts.values()) != eligible:
             add("outcome_denominator_mismatch", f"{base}.outcome_counts", "Per-arm outcome counts must sum to eligible_records.")
         if arm.outcome_counts["success"] != arm.available_output_population.examples:
@@ -232,7 +236,7 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
         if ids != sorted(set(ids)):
             add("provider_ids_not_canonical", f"{base}.confirmed_provider_ids", "Provider identifiers must be unique and sorted.")
         for index, provider_id in enumerate(ids):
-            if not _SAFE_PROVIDER.fullmatch(provider_id) or _SECRET.search(provider_id) or provider_id == "mock.test":
+            if not _SAFE_PROVIDER.fullmatch(provider_id) or _SECRET.search(provider_id) or provider_id != RESEARCH_PROVIDER_ID:
                 add("unsafe_provider_id", f"{base}.confirmed_provider_ids[{index}]", "Provider identifier is unsafe or test-only.")
         model_ids = arm.confirmed_provider_models
         if model_ids != sorted(set(model_ids)):

@@ -7,7 +7,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from app.schemas.four_condition import FourConditionConfiguration
+from app.schemas.analysis import TranslationResult
+from app.schemas.four_condition import FourConditionArtifact, FourConditionConfiguration
 from app.schemas.four_condition import ConditionResourceBinding
 from app.schemas.linguistic_resource import LinguisticResourceManifest
 from app.services.four_condition_experiment import _apply_mapping_rules, run_four_condition_experiment
@@ -67,6 +68,32 @@ class FourConditionTests(unittest.TestCase):
         self.assertTrue(artifact.result.test_fixture)
         self.assertFalse(any(c.research_eligible for c in artifact.result.conditions))
 
+    def test_unknown_provider_output_stays_tainted_after_json_round_trip(self):
+        config = FourConditionConfiguration(dataset_label="synthetic-test-only", split="test")
+        artifact = run_four_condition_experiment(
+            "fixture-001", "nenu college", configuration=config,
+            provider=FakeProvider(), allow_provider_calls=True,
+        )
+        restored = FourConditionArtifact.model_validate(artifact.model_dump(mode="json"))
+        self.assertTrue(restored.result.test_fixture)
+        self.assertFalse(any(item.research_eligible for item in restored.result.conditions))
+
+    def test_test_only_resource_transformation_is_consistent_and_tainted(self):
+        config = FourConditionConfiguration(
+            dataset_label="synthetic-test-only", split="test",
+            resources={"normalizer": self.normalizer_binding()},
+        )
+        artifact = run_four_condition_experiment(
+            "fixture-001", "nenu college", configuration=config,
+            provider=None, allow_test_fixtures=True,
+        )
+        restored = FourConditionArtifact.model_validate(artifact.model_dump(mode="json"))
+        normalized = restored.result.conditions[1]
+        self.assertEqual(normalized.intended_provider_input, "nēnu college")
+        self.assertEqual(normalized.stages[0].applied_transformations, 1)
+        self.assertTrue(restored.result.test_fixture)
+        self.assertFalse(any(item.research_eligible for item in restored.result.conditions))
+
     def test_configuration_rejects_duplicate_or_incomplete_condition_order(self):
         with self.assertRaises(ValidationError):
             FourConditionConfiguration(
@@ -82,6 +109,97 @@ class FourConditionTests(unittest.TestCase):
         self.assertEqual(source[changes[0].start:changes[0].end], "nenu")
         self.assertEqual(changes[0].after, "nēnu")
 
+    def test_resource_taint_metadata_is_required_not_defaulted(self):
+        raw = self.normalizer_binding().model_dump(mode="python")
+        raw.pop("test_only")
+        with self.assertRaises(ValidationError):
+            ConditionResourceBinding.model_validate(raw)
+
+    def test_artifact_rejects_completed_variant_without_its_resources(self):
+        annotation = make_annotation()
+        config = FourConditionConfiguration(dataset_label="audit-test", split="test")
+        raw = run_four_condition_experiment(
+            annotation["id"], annotation["text"], configuration=config, provider=None,
+        ).model_dump(mode="python")
+        normalized = raw["result"]["conditions"][1]
+        normalized.update(
+            status="completed", blocked_reason=None,
+            intermediate_inputs={"original": annotation["text"]},
+            intended_provider_input=annotation["text"], provider_input=annotation["text"],
+            provider_call_attempted=True,
+            translation={
+                "status": "success", "input_text": annotation["text"],
+                "provider_id": "fixture.fake", "translated_text": "synthetic output",
+                "provider_model": None, "provider_configuration_forwarded": False,
+            },
+            resource_references=(), transformations=(), skipped_transformations=(),
+            stages=(), intervention_applied=False, research_eligible=True,
+        )
+        raw["result"]["invocation_order"] = ["normalized_v1"]
+        with self.assertRaises(ValidationError):
+            FourConditionArtifact.model_validate(raw)
+
+    def test_research_ineligible_outputs_are_never_scored(self):
+        annotation = make_annotation()
+        config = FourConditionConfiguration(dataset_label="audit-test", split="test")
+        artifact = run_four_condition_experiment(
+            annotation["id"], annotation["text"], configuration=config,
+            provider=FakeProvider(), allow_provider_calls=True,
+        )
+        conditions = list(artifact.result.conditions)
+        direct = conditions[0]
+        conditions[0] = direct.model_copy(update={
+            "research_eligible": False,
+            "translation": direct.translation.model_copy(update={
+                "provider_id": "google.cloud.translation.basic.v2",
+            }),
+        })
+        forged = artifact.model_copy(update={
+            "result": artifact.result.model_copy(update={
+                "test_fixture": False, "conditions": tuple(conditions),
+            }),
+        })
+        report = evaluate_four_condition_records(
+            dataset_label="audit-test", split="test", annotation_rows=[(1, annotation)],
+            readiness=EvaluationReadinessReport(path="fixture", records_examined=1),
+            artifacts=[forged],
+        )
+        self.assertEqual(report.report_status, "test_fixture_only")
+        self.assertEqual(report.variants["direct_v1"].available_examples, 0)
+
+    def test_incompatible_provider_configuration_forwarding_is_excluded(self):
+        annotations = [make_annotation("one"), make_annotation("two")]
+        config = FourConditionConfiguration(dataset_label="audit-test", split="test")
+        artifacts = []
+        for index, annotation in enumerate(annotations):
+            artifact = run_four_condition_experiment(
+                annotation["id"], annotation["text"], configuration=config, provider=None,
+            )
+            conditions = list(artifact.result.conditions)
+            direct = conditions[0]
+            conditions[0] = direct.model_copy(update={
+                "provider_call_attempted": True,
+                "provider_input": annotation["text"],
+                "translation": TranslationResult(
+                    status="success", input_text=annotation["text"],
+                    provider_id="google.cloud.translation.basic.v2",
+                    translated_text="synthetic test output",
+                    provider_configuration_forwarded=True if index else None,
+                ),
+            })
+            result = artifact.result.model_copy(update={
+                "conditions": tuple(conditions), "invocation_order": ("direct_v1",),
+            })
+            artifacts.append(artifact.model_copy(update={"result": result}))
+        report = evaluate_four_condition_records(
+            dataset_label="audit-test", split="test",
+            annotation_rows=[(index + 1, row) for index, row in enumerate(annotations)],
+            readiness=EvaluationReadinessReport(path="fixture", records_examined=2),
+            artifacts=artifacts,
+        )
+        self.assertEqual(report.variants["direct_v1"].available_examples, 1)
+        self.assertEqual(report.variants["direct_v1"].outcome_counts["invalid_pair"], 1)
+
     def test_test_fixture_outcomes_are_never_scored_as_research(self):
         annotation = make_annotation()
         config = FourConditionConfiguration(dataset_label="test-fixture", split="test")
@@ -92,7 +210,7 @@ class FourConditionTests(unittest.TestCase):
         readiness = EvaluationReadinessReport(path="fixture", records_examined=1)
         report = evaluate_four_condition_records(
             dataset_label="test-fixture", split="test", annotation_rows=[(1, annotation)],
-            readiness=readiness, artifacts=[artifact], allow_test_fixtures=True,
+            readiness=readiness, artifacts=[artifact],
         )
         self.assertEqual(report.report_status, "test_fixture_only")
         self.assertEqual(report.variants["direct_v1"].available_examples, 0)
@@ -135,7 +253,7 @@ class FourConditionTests(unittest.TestCase):
                 status = evaluate_cli([
                     "--annotations", str(annotations), "--artifacts", str(artifacts),
                     "--dataset-label", "synthetic-test-only", "--split", "test",
-                    "--output", str(report), "--allow-test-fixtures",
+                    "--output", str(report),
                 ])
                 validation = validate_cli([str(report)])
             self.assertEqual(status, 1)  # Fixture or readiness-blocked; never research-ready.

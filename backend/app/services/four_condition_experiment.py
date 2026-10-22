@@ -16,6 +16,7 @@ from app.schemas.four_condition import (
     FourConditionConfiguration, FourConditionExampleResult,
 )
 from app.services.ambiguity_resolution import resolve_ambiguities
+from app.services.google_translation import PROVIDER_ID as VERIFIED_PROVIDER_ID
 from app.services.linguistic_resources import resource_readiness
 from app.services.pipeline import analyze
 from app.services.preprocessing import normalize_whitespace
@@ -432,7 +433,13 @@ def run_four_condition_experiment(
             provider_id = provider.provider_id
         except Exception:
             provider_id = None
-    test_fixture = allow_test_fixtures or provider_id == "mock.test"
+    # Only the configured project adapter is currently recognized as a
+    # research provider. Unknown/injected providers remain usable for tests,
+    # but their artifacts are visibly tainted and cannot be scored.
+    test_fixture = (
+        allow_test_fixtures
+        or (provider is not None and provider_id != VERIFIED_PROVIDER_ID)
+    )
     model = getattr(provider, "requested_model", None) if provider is not None else None
     if configuration.requested_model is None and isinstance(model, str) and model.strip():
         configuration = configuration.model_copy(update={"requested_model": model})
