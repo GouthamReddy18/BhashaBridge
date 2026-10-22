@@ -33,6 +33,10 @@ _READINESS_CATEGORIES = {
     "review_metadata", "split_or_leakage", "test_population", "structural_or_metadata",
 }
 _EXCLUSION_CATEGORIES = _READINESS_CATEGORIES | {"dataset_not_ready", "outside_requested_split"}
+_ASSISTANCE_CATEGORIES = {
+    "identity", "normalization_only", "synthetic_transformation",
+    "verified_transformation", "fallback", "other", "missing_artifact", "invalid_pair",
+}
 _SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}$")
 _SAFE_PROVIDER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
 _SAFE_PROVIDER_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
@@ -126,6 +130,23 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
     discovered, eligible, excluded = report.records_discovered, report.eligible_records, report.excluded_records
     if eligible + excluded != discovered:
         add("population_total_mismatch", "eligible_records", "Eligible and excluded records must sum to records_discovered.")
+    if report.eligible_example_ids:
+        if report.eligible_example_ids != sorted(set(report.eligible_example_ids)):
+            add("eligible_ids_not_canonical", "eligible_example_ids", "Eligible example IDs must be unique and sorted.")
+        if len(report.eligible_example_ids) != eligible:
+            add("eligible_ids_denominator", "eligible_example_ids", "Eligible example IDs must match eligible_records.")
+
+    if report.assisted_input_categories:
+        if set(report.assisted_input_categories) != _ASSISTANCE_CATEGORIES:
+            add("assistance_category_keys", "assisted_input_categories", "Assisted-input category keys must match the supported contract.")
+        for key, count in report.assisted_input_categories.items():
+            if count < 0:
+                add("negative_count", "assisted_input_categories" + _safe_location_part(key), "Counts must be nonnegative integers.")
+        if sum(report.assisted_input_categories.values()) != eligible:
+            add("assistance_category_denominator", "assisted_input_categories", "Assisted-input categories must sum to eligible_records.")
+    elif report.evaluation_status != "not_evaluated" and eligible:
+        # Older serialized reports predate this additive Phase 11 diagnostic.
+        pass
 
     for mapping_path, mapping in (
         ("readiness_diagnostic_counts", report.readiness_diagnostic_counts),
@@ -162,6 +183,11 @@ def _integrity_errors(report: EvaluationReport) -> list[EvaluationReportDiagnost
             add("outcome_denominator_mismatch", f"{base}.outcome_counts", "Per-arm outcome counts must sum to eligible_records.")
         if arm.outcome_counts["success"] != arm.available_output_population.examples:
             add("success_population_mismatch", f"{base}.available_output_population.examples", "Successful outcome count must equal the available-output population.")
+        if arm.available_output_example_ids:
+            if arm.available_output_example_ids != sorted(set(arm.available_output_example_ids)):
+                add("available_ids_not_canonical", f"{base}.available_output_example_ids", "Available-output IDs must be unique and sorted.")
+            if len(arm.available_output_example_ids) != arm.available_output_population.examples:
+                add("available_ids_denominator", f"{base}.available_output_example_ids", "Available-output IDs must match the successful output population.")
         if arm.outcome_counts["disabled"] != 0:
             add("disabled_outcome_unsupported", f"{base}.outcome_counts.disabled", "Paired experiment reports cannot contain disabled arm outcomes.")
         if arm.available_output_population.examples > eligible:

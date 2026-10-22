@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -12,6 +13,7 @@ from app.services.dataset_validation import _unique_object_pairs, validate_datas
 from app.services.evaluation_readiness import check_evaluation_readiness
 
 RUBRIC_VERSION = "semantic-preservation-0-4.v1"
+_SAFE_LABEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ -]{0,79}$")
 
 
 class RatingWorkflowError(ValueError):
@@ -39,12 +41,14 @@ def _write_new(path, payload):
 
 
 def create_rating_tasks(annotations, paired_results, *, split, tasks_output, ratings_output,
-                       blinded=False, mapping_output=None):
+                       blinded=False, mapping_output=None, dataset_label="unlabeled"):
     """Write rater stimuli plus explicitly pending rows; never create ratings."""
     if split not in {"train", "validation", "test"}:
         raise RatingWorkflowError("unsupported split")
     if blinded != (mapping_output is not None):
         raise RatingWorkflowError("blinded tasks require a separate mapping output")
+    if not isinstance(dataset_label, str) or not _SAFE_LABEL.fullmatch(dataset_label) or re.search(r"(?:api.?key|secret|token|password|^sk-)", dataset_label, re.IGNORECASE):
+        raise RatingWorkflowError("dataset_label must be a short safe label")
     sources = {Path(annotations).resolve(), Path(paired_results).resolve()}
     outputs = [Path(tasks_output), Path(ratings_output)]
     if mapping_output is not None:
@@ -105,6 +109,7 @@ def create_rating_tasks(annotations, paired_results, *, split, tasks_output, rat
             if blinded:
                 mapping.append({"example_id": example_id, "display_label": label, "arm": arm})
         tasks.append({"schema_version": "1.0", "rubric_version": RUBRIC_VERSION,
+                      "dataset_label": dataset_label, "split": split,
                       "example_id": example_id, "source_text": row["text"],
                       "intended_meaning": row["intended_meaning"], "blinded": blinded, "items": items})
 
@@ -123,21 +128,40 @@ def aggregate_human_ratings(tasks_path, ratings_path, *, mapping_path=None, min_
     tasks = _read_jsonl(tasks_path)
     expected = {}
     blinded = False
+    task_labels, task_splits = set(), set()
     for task in tasks:
         example_id = task.get("example_id")
-        if task.get("schema_version") != "1.0" or task.get("rubric_version") != RUBRIC_VERSION or not isinstance(example_id, str):
+        if (task.get("schema_version") != "1.0" or task.get("rubric_version") != RUBRIC_VERSION
+                or not isinstance(example_id, str) or not example_id.strip()
+                or not isinstance(task.get("blinded"), bool)):
             raise RatingWorkflowError("rating task schema is invalid")
         blinded = blinded or task.get("blinded") is True
+        if task.get("dataset_label") is not None:
+            if not isinstance(task["dataset_label"], str) or not _SAFE_LABEL.fullmatch(task["dataset_label"]):
+                raise RatingWorkflowError("rating task dataset label is invalid")
+            task_labels.add(task["dataset_label"])
+        if task.get("split") is not None:
+            if task["split"] not in {"train", "validation", "test"}:
+                raise RatingWorkflowError("rating task split is invalid")
+            task_splits.add(task["split"])
         items = task.get("items")
-        if not isinstance(items, list) or len(items) != 2:
+        if not isinstance(items, list) or len(items) != 2 or any(not isinstance(item, dict) for item in items):
             raise RatingWorkflowError("each task must contain two arms")
-        labels = {item.get("display_label") for item in items if isinstance(item, dict)}
+        labels = {item.get("display_label") for item in items}
         if labels != ({"A", "B"} if task.get("blinded") else {"direct", "assisted"}):
             raise RatingWorkflowError("task arm labels are invalid")
         for item in items:
+            if item.get("translation_text") is not None and not isinstance(item.get("translation_text"), str):
+                raise RatingWorkflowError("task translation text is invalid")
             expected[(example_id, item["display_label"])] = item.get("translation_text") is not None
     if not tasks or len({task.get("example_id") for task in tasks}) != len(tasks):
         raise RatingWorkflowError("tasks must contain unique examples")
+    if len(task_labels) > 1 or len(task_splits) > 1:
+        raise RatingWorkflowError("rating tasks must use one dataset label and split")
+    if task_labels and (not _SAFE_LABEL.fullmatch(next(iter(task_labels)))):
+        raise RatingWorkflowError("rating task dataset label is invalid")
+    if task_splits and next(iter(task_splits)) not in {"train", "validation", "test"}:
+        raise RatingWorkflowError("rating task split is invalid")
 
     arm_map = {}
     if blinded:
@@ -152,7 +176,7 @@ def aggregate_human_ratings(tasks_path, ratings_path, *, mapping_path=None, min_
                 if key in arm_map or item["arm"] not in {"direct", "assisted"}:
                     raise ValueError
                 arm_map[key] = item["arm"]
-        except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        except (OSError, UnicodeError, json.JSONDecodeError, KeyError, TypeError, ValueError, AttributeError):
             raise RatingWorkflowError("blinded mapping is invalid") from None
         if set(arm_map) != set(expected):
             raise RatingWorkflowError("blinded mapping is incomplete")
@@ -181,15 +205,19 @@ def aggregate_human_ratings(tasks_path, ratings_path, *, mapping_path=None, min_
 
     report = {"schema_version": "1.0", "rubric_version": RUBRIC_VERSION,
               "minimum_independent_reviewers": min_reviewers, "blinded_presentation": blinded,
+              "dataset_label": next(iter(task_labels)) if task_labels else None,
+              "split": next(iter(task_splits)) if task_splits else None,
               "arms": {}, "inter_annotator_agreement": {
                   "status": "not_calculated", "reason": "No agreement statistic is implemented."}}
     for arm in ("direct", "assisted"):
         per_example, pending, available, unavailable = {}, 0, 0, 0
+        available_ids, unavailable_ids = [], []
         for (example_id, label), has_output in expected.items():
             resolved_arm = arm_map[(example_id, label)] if blinded else label
             if resolved_arm == arm:
                 available += int(has_output)
                 unavailable += int(not has_output)
+                (available_ids if has_output else unavailable_ids).append(example_id)
         for rating, resolved_arm, has_output in records:
             if resolved_arm != arm:
                 continue
@@ -201,8 +229,11 @@ def aggregate_human_ratings(tasks_path, ratings_path, *, mapping_path=None, min_
         included_scores = [score for key in included for score in per_example[key]]
         report["arms"][arm] = {
             "available_output_examples": available,
+            "available_output_example_ids": sorted(available_ids),
+            "unavailable_output_example_ids": sorted(unavailable_ids),
             "unavailable_output_examples": unavailable,
             "rated_examples_with_required_reviewers": len(included),
+            "rated_example_ids": included,
             "missing_or_insufficiently_reviewed_examples": max(0, available - len(included)),
             "pending_judgments": pending,
             "completed_judgments": len(included_scores),

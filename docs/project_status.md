@@ -86,3 +86,7 @@ Implemented a versioned rating record and offline task/aggregation workflow reus
 Phase 9 verification passed 245 backend tests (exit 0); structural draft validation exited 0, draft readiness exited 1 as expected, runner `--help` exited 0, and `git diff --check` exited 0. The four runner tests use only explicitly labeled synthetic data and a fake provider, including one failed arm with no retry.
 
 Phase 10 verification passed 251 backend tests (exit 0); focused rating workflow tests passed 6/6. Rating CLI help exited 0 and git diff --check exited 0. Dataset structural validation exited 0; readiness exited 1 as expected for the unchanged 16 drafts. All ratings generated in tests were null templates or explicitly synthetic software fixtures; no human rating data was created.
+
+8. **Phase 11 Research reporting:** denominator-checked assistance categories and validated descriptive report composition are implemented. No eligible artifacts or human ratings exist; no empirical conclusions are supported.
+
+Phase 11 verification passed 258 backend tests (exit 0); evaluation, human-rating, and research-report focused suites passed. Research-report CLI help exited 0, draft structural validation exited 0, draft readiness exited 1 as expected, and git diff --check exited 0. Tests used only synthetic fixtures; no research report or human rating result was produced from project data.

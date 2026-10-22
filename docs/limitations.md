@@ -41,3 +41,5 @@ Phase 10 adds a pending human-rating workflow and descriptive coverage/distribut
 ### Phase 6C execution-order limits
 
 Paired experiments can explicitly run direct_first (default) or assisted_first; the result records the actual attempted invocation order separately from stable arm identity. A provider call that raises is an attempt; a provider-ID failure before the call is not. Choosing a deterministic order improves traceability, not provider determinism or causal validity. Stateful behavior, rate limits, transient failures, and provider-side effects can still confound comparisons. No real provider, reviewed transformation resource, human-reviewed evaluation benchmark, or measured translation-quality/semantic-preservation improvement exists.
+
+Phase 11 adds category counts and a report composer that checks evaluation-report integrity and optional human-rating ID denominators. It does not authenticate provenance or provider output and performs no statistical inference. No eligible evaluation artifacts or genuine human-rating summary exist; empirical conclusions remain pending.

@@ -67,6 +67,7 @@ class ArmEvaluationSummary(BaseModel):
     failure_code_counts: dict[str, int]
     confirmed_provider_ids: list[str]
     confirmed_provider_models: list[str] = Field(default_factory=list)
+    available_output_example_ids: list[StrictStr] = Field(default_factory=list)
     attempted_invocations: int = Field(ge=0)
     pre_invocation_failures: int = Field(ge=0)
     available_output_population: MetricPopulation
@@ -102,8 +103,10 @@ class EvaluationReport(BaseModel):
     metric_configuration: MetricConfiguration
     records_discovered: int = Field(ge=0)
     eligible_records: int = Field(ge=0)
+    eligible_example_ids: list[StrictStr] = Field(default_factory=list)
     excluded_records: int = Field(ge=0)
     invalid_pair_records: int = Field(ge=0)
+    assisted_input_categories: dict[str, int] = Field(default_factory=dict)
     exclusion_reasons: list[ExclusionCount]
     readiness_diagnostic_counts: dict[str, int]
     orphan_pair_results: int = Field(ge=0)

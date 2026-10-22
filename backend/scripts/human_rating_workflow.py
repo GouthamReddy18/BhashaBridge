@@ -18,6 +18,7 @@ def main(argv=None):
     create.add_argument("--annotations", required=True)
     create.add_argument("--paired-results", required=True)
     create.add_argument("--split", required=True, choices=("train", "validation", "test"))
+    create.add_argument("--dataset-label", required=True)
     create.add_argument("--tasks-output", required=True)
     create.add_argument("--ratings-output", required=True)
     create.add_argument("--blinded", action="store_true")
@@ -33,6 +34,7 @@ def main(argv=None):
         if args.command == "create-tasks":
             paths = create_rating_tasks(
                 args.annotations, args.paired_results, split=args.split,
+                dataset_label=args.dataset_label,
                 tasks_output=args.tasks_output, ratings_output=args.ratings_output,
                 blinded=args.blinded, mapping_output=args.mapping_output,
             )

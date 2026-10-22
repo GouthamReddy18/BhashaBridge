@@ -115,6 +115,13 @@ class EvaluationReportValidationServiceTests(unittest.TestCase):
         value["warnings"] = []
         self.assertEqual(validate_evaluation_report(value).status, "VALID")
 
+    def test_assisted_input_category_denominator_must_match_eligible_records(self):
+        value = copy.deepcopy(self.report)
+        value["assisted_input_categories"]["identity"] += 1
+        result = validate_evaluation_report(value)
+        self.assertEqual(result.status, "INVALID")
+        self.assertIn("assistance_category_denominator", {item.code for item in result.diagnostics})
+
     def test_required_field_and_wrong_types_are_invalid(self):
         missing = copy.deepcopy(self.report)
         missing.pop("split")

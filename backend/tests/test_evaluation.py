@@ -398,6 +398,19 @@ class EvaluationServiceTests(unittest.TestCase):
         self.assertEqual(report.arms["direct"].failure_code_counts["split_metadata_mismatch"], 1)
         self.assertEqual(report.matched_output_pairs, 0)
 
+    def test_assisted_input_categories_distinguish_identity_normalization_and_missing(self):
+        identity = make_annotation("identity", "nenu college", group="g1")
+        normalized = make_annotation("normalized", " nenu office ", group="g2")
+        absent = make_annotation("missing", "nenu bank", group="g3")
+        report = self.evaluate(
+            [identity, normalized, absent],
+            [make_artifact(identity), make_artifact(normalized)],
+        )
+        self.assertEqual(report.assisted_input_categories["identity"], 1)
+        self.assertEqual(report.assisted_input_categories["normalization_only"], 1)
+        self.assertEqual(report.assisted_input_categories["missing_artifact"], 1)
+        self.assertEqual(sum(report.assisted_input_categories.values()), report.eligible_records)
+
     def test_incompatible_provider_identity_invalidates_pair_without_mixing_scores(self):
         first = make_annotation("first", " nenu   college ", group="g1")
         second = make_annotation("second", " nenu   office ", group="g2")

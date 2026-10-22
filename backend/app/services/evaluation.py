@@ -30,6 +30,11 @@ FAILURE_CODES = (
     "incompatible_provider_configuration",
     "split_metadata_mismatch",
 )
+ASSISTED_INPUT_CATEGORIES = (
+    "identity", "normalization_only", "synthetic_transformation",
+    "verified_transformation", "fallback", "other",
+    "missing_artifact", "invalid_pair",
+)
 _SAFE_PROVIDER_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}$")
 _SAFE_PROVIDER_MODEL = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
 _SECRET_MARKER = re.compile(r"(?:api.?key|secret|token|password|^sk-)", re.IGNORECASE)
@@ -151,6 +156,7 @@ def evaluate_paired_records(
                 failure_code_counts={code: 0 for code in FAILURE_CODES},
                 confirmed_provider_ids=[],
                 confirmed_provider_models=[],
+                available_output_example_ids=[],
                 attempted_invocations=0,
                 pre_invocation_failures=0,
                 available_output_population=_population("successful_nonblank_outputs", [], []),
@@ -187,6 +193,7 @@ def evaluate_paired_records(
     outcome_counts = {
         arm: {key: 0 for key in OUTCOME_KEYS} for arm in ("direct", "assisted")
     }
+    assistance_counts = {key: 0 for key in ASSISTED_INPUT_CATEGORIES}
     failure_counts = {
         arm: {code: 0 for code in FAILURE_CODES} for arm in ("direct", "assisted")
     }
@@ -214,6 +221,7 @@ def evaluate_paired_records(
         if artifact is None:
             for arm in ("direct", "assisted"):
                 outcome_counts[arm]["missing"] += 1
+            assistance_counts["missing_artifact"] += 1
             continue
         result = artifact.result
         if artifact.split is not None and artifact.split != row.get("split"):
@@ -221,6 +229,7 @@ def evaluate_paired_records(
                 outcome_counts[arm]["invalid"] += 1
                 failure_counts[arm]["split_metadata_mismatch"] += 1
             invalid_pair_records += 1
+            assistance_counts["invalid_pair"] += 1
             continue
         execution_order_counts[result.configuration.execution_order] += 1
         invocation_trace = ",".join(result.invocation_order) or "none"
@@ -299,7 +308,24 @@ def evaluate_paired_records(
                         or requested_model_mismatch or unsafe_model_metadata):
                     failure_counts[arm]["incompatible_provider_configuration"] += 1
             invalid_pair_records += 1
+            assistance_counts["invalid_pair"] += 1
             continue
+        assistance = result.assisted_input
+        if assistance.fallback:
+            assistance_category = "fallback"
+        elif assistance.transformations and all(
+            item.evidence_status == "synthetic_fixture" for item in assistance.transformations
+        ):
+            assistance_category = "synthetic_transformation"
+        elif assistance.meaningful_assistance:
+            assistance_category = "verified_transformation"
+        elif assistance.normalization_only:
+            assistance_category = "normalization_only"
+        elif assistance.assisted_input_equals_original:
+            assistance_category = "identity"
+        else:
+            assistance_category = "other"
+        assistance_counts[assistance_category] += 1
         if baseline_requested_configuration is None:
             baseline_requested_configuration = requested_configuration
         if confirmed_provider_profile is None and provider_candidates:
@@ -388,8 +414,10 @@ def evaluate_paired_records(
         metric_configuration=metric_configuration,
         records_discovered=len(annotation_rows),
         eligible_records=len(eligible),
+        eligible_example_ids=sorted(str(example_id) for example_id in eligible_by_id),
         excluded_records=len(annotation_rows) - len(eligible),
         invalid_pair_records=invalid_pair_records,
+        assisted_input_categories=assistance_counts,
         exclusion_reasons=[
             ExclusionCount(reason="outside_requested_split", examples=len(annotation_rows) - len(eligible))
         ] if len(annotation_rows) != len(eligible) else [],
@@ -401,6 +429,7 @@ def evaluate_paired_records(
                 failure_code_counts=failure_counts[arm],
                 confirmed_provider_ids=sorted(providers[arm]),
                 confirmed_provider_models=sorted(models[arm]),
+                available_output_example_ids=sorted(item[0] for item in available[arm]),
                 attempted_invocations=attempted_invocations[arm],
                 pre_invocation_failures=pre_invocation_failures[arm],
                 available_output_population=available_populations[arm],
