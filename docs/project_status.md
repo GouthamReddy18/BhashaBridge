@@ -1,7 +1,7 @@
 # Project engineering status
 
 **Status checked:** 2026-10-22\
-**Checkpoint:** Phase 6D.3, `e59234b` (`feat: add evaluation report integrity validation`)\
+**Checkpoint:** Phase 12 frontend implementation verified; Phase 11 reporting checkpoint is `f0d9412`.\
 **Roadmap note:** No independent master implementation roadmap was found in the repository. The later phase labels in the continuation prompt are proposed engineering stages, not verified original roadmap labels.
 
 ## Current readiness
@@ -22,7 +22,7 @@
 | Evaluation report integrity | Implemented and tested; provenance is not authenticated | Phase 6D.3 checks schema and internal consistency for saved reports. It does not authenticate source artifacts, independently recompute scores, or establish that provider output is genuine. |
 | Human semantic-preservation judgments | Workflow implemented; ratings require human contribution | Versioned 0–4 task/rating schema, pending templates, optional blind labels with a separate mapping key, range/provenance validation, and coverage-aware aggregation are implemented. No actual ratings exist and no inter-rater agreement is calculated. |
 | Statistical analysis and research conclusions | Deferred until genuine evidence exists | No eligible benchmark, paired real-provider outputs, or human judgments are available. No significance or causal-improvement claim is supported. |
-| Frontend | Implemented for supported analysis only | React/Vite frontend is present. It must not imply that unavailable provider, experiment, or research-report capabilities are operational. Frontend build verification remains for integration QA or any frontend change. |
+| Frontend | Implemented and build/integration verified | Calls the actual `/api/v1/analyze` workflow; translation stays explicit opt-in and evaluation/experiment controls remain absent. |
 
 ## Baseline verification at this checkpoint
 
@@ -90,3 +90,9 @@ Phase 10 verification passed 251 backend tests (exit 0); focused rating workflow
 8. **Phase 11 Research reporting:** denominator-checked assistance categories and validated descriptive report composition are implemented. No eligible artifacts or human ratings exist; no empirical conclusions are supported.
 
 Phase 11 verification passed 258 backend tests (exit 0); evaluation, human-rating, and research-report focused suites passed. Research-report CLI help exited 0, draft structural validation exited 0, draft readiness exited 1 as expected, and git diff --check exited 0. Tests used only synthetic fixtures; no research report or human rating result was produced from project data.
+
+## Phase 12 frontend completion
+
+The frontend now calls the existing analysis endpoint and shows the real response's original/normalized text, token labels and evidence, transliteration outcomes, ambiguity decisions, module status, and optional translation outcome. There are no experiment, evaluation, or research-results controls. The translation checkbox is unchecked by default and warns that an explicitly requested translation may send text to a configured provider and incur charges. Vite proxies the API route to the local backend; separate-origin deployment requires a configured API base URL and suitable reverse-proxy/CORS setup. Input counting uses Unicode code points, consistent with backend Python string length. Frontend dependencies are pinned and lockfile-backed.
+
+Verification: `npm run build` passed with Node.js 22.15.0 and locked Vite 8.3.5 (exit 0). The first sandboxed build attempt could not traverse the system Node executable path; the same build passed after granting local process read access. No provider call or dataset transmission was made.
