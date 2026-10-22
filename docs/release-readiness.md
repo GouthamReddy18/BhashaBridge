@@ -1,6 +1,6 @@
 # Engineering release readiness — Phase 26
 
-Verification recorded 2026-10-22 at HEAD `653fb3b33f56e572545fcbbf36c5de8bd23fa8e5`. This checkpoint records software verification separately from research readiness.
+Verification was run on 2026-10-22 against the completed worktree based on HEAD `653fb3b33f56e572545fcbbf36c5de8bd23fa8e5`, before the delivery commits. This checkpoint records software verification separately from research readiness.
 
 ## Scope
 
