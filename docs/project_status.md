@@ -20,7 +20,7 @@
 | Verified linguistic transformations | Resource workflow implemented; production use blocked | A versioned manifest schema, validator, and deterministic fail-closed matcher exist. Production substitutions are disabled; no reviewed Telugu-English transformation resource is available, and review declarations are not authenticated. |
 | BLEU and chrF | Implemented and verified as software; empirical use pending | Phase 6D.2 implements project-versioned corpus metrics and a report CLI. Scores require eligible human-reviewed references and genuine provider outputs. These proxies do not measure semantic preservation by themselves. |
 | Evaluation report integrity | Implemented and tested; provenance is not authenticated | Phase 6D.3 checks schema and internal consistency for saved reports. It does not authenticate source artifacts, independently recompute scores, or establish that provider output is genuine. |
-| Human semantic-preservation judgments | Requires human contribution; workflow pending | There are no ratings, rubric data, rating-entry or aggregation workflow, or inter-rater agreement results. BLEU/chrF must not be substituted for human judgments. |
+| Human semantic-preservation judgments | Workflow implemented; ratings require human contribution | Versioned 0–4 task/rating schema, pending templates, optional blind labels with a separate mapping key, range/provenance validation, and coverage-aware aggregation are implemented. No actual ratings exist and no inter-rater agreement is calculated. |
 | Statistical analysis and research conclusions | Deferred until genuine evidence exists | No eligible benchmark, paired real-provider outputs, or human judgments are available. No significance or causal-improvement claim is supported. |
 | Frontend | Implemented for supported analysis only | React/Vite frontend is present. It must not imply that unavailable provider, experiment, or research-report capabilities are operational. Frontend build verification remains for integration QA or any frontend change. |
 
@@ -46,7 +46,7 @@ The following sequence is proposed from the actual repository state and the supp
 4. **Phase 7 Provider adapter:** Google Cloud Translation Basic v2 adapter implemented with configuration-aware paired calls, bounded timeout, and model confirmation; real calls still require explicit authorization.
 5. **Phase 8 Verified linguistic assistance:** implement provenance-aware resource infrastructure; production substitutions stay blocked until reviewed resources exist.
 6. **Phase 9 Reproducible experiment artifacts:** runner and versioned artifact output implemented; real run awaits eligible data and explicit external-call authorization.
-7. **Phase 10 Human ratings:** create an explicit pending-review workflow; never generate ratings.
+7. **Phase 10 Human ratings:** pending task and rating workflow implemented; genuine human completion remains required.
 8. **Phase 11 Research reporting:** report only validated eligible artifacts and avoid unsupported inference.
 9. **Phase 12 Frontend completion:** expose only supported backend capabilities.
 10. **Phase 13 Integration QA and Phase 14 delivery docs:** perform after the preceding engineering stages.
@@ -79,4 +79,10 @@ The full backend suite passed 240 tests (exit 0); the seven focused resource tes
 
 Added a dataset runner that requires structural and whole-dataset readiness, an explicit provider-call flag, a non-empty selected split, and a new output path. Version 1.0 JSONL rows preserve ID, split, arm identity, requested order, actual invocation order, and typed outcomes. Evaluation now rejects optional artifact split metadata that conflicts with its annotation row. The runner was exercised only with labeled synthetic unit-test data and a fake provider; no call was made to Google or any other external service. Documentation records output compatibility, provider nondeterminism, absence of retries, and the need for incomplete-pair reporting.
 
+## Phase 10 human rating workflow
+
+Implemented a versioned rating record and offline task/aggregation workflow reusing the protocol 0–4 rubric. It supports arm-specific entries, pending state, reviewer provenance, minimum independent-reviewer thresholds, missing output/rating counts, and optional blind A/B stimuli with a separate mapping key. It rejects mock.test outputs, invalid scores, duplicate reviewer judgments, and ratings for missing/failed translations. No human ratings were produced, no IAA is calculated, and the Phase 6D.2 report remains unchanged.
+
 Phase 9 verification passed 245 backend tests (exit 0); structural draft validation exited 0, draft readiness exited 1 as expected, runner `--help` exited 0, and `git diff --check` exited 0. The four runner tests use only explicitly labeled synthetic data and a fake provider, including one failed arm with no retry.
+
+Phase 10 verification passed 251 backend tests (exit 0); focused rating workflow tests passed 6/6. Rating CLI help exited 0 and git diff --check exited 0. Dataset structural validation exited 0; readiness exited 1 as expected for the unchanged 16 drafts. All ratings generated in tests were null templates or explicitly synthetic software fixtures; no human rating data was created.

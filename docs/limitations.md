@@ -35,6 +35,8 @@ Applying synthetic test transformations does not count as meaningful linguistic 
 
 Phase 8 adds a versioned resource-manifest validator and an exact-match, fail-closed matcher. No genuine reviewed rule resource is available, reviewer/evidence declarations are unauthenticated, and the matcher is intentionally not connected to production experiment execution. Production transformations remain blocked; resource readiness must not be confused with linguistic validation.
 
+Phase 10 adds a pending human-rating workflow and descriptive coverage/distribution output. No human ratings have been collected; reviewer declarations are unauthenticated, blind keys require coordinator protection, inter-rater agreement is not implemented, and ratings are not embedded in Phase 6D.2 reports.
+
 
 ### Phase 6C execution-order limits
 
