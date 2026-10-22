@@ -6,16 +6,20 @@ This outline separates verified software facts from pending empirical work. It i
 
 1. **Title and authorship** — Use the approved project title and institution-required author/supervisor details.
 2. **Abstract** — Pending: research question, eligible sample size, method, observed metric and human-rating results, uncertainty, and conclusion. Do not draft result claims before evaluation.
-3. **Introduction** — Motivate Telugu–English code-mixed text and Romanized Telugu. Define semantic preservation and the research question; distinguish motivation from evidence.
-4. **Related work** — Summarize primary sources in `references.md` and add verified citations for any further claims. Record versions and access dates for mutable sources.
-5. **System and resource inventory** — Describe normalization, tokenization, LID, transliteration, ambiguity fixture, translation adapter, and four condition contracts. Mark each resource as implemented, configured, qualified, or research eligible; these states are not equivalent.
-6. **Dataset and annotation** — Pending: legally usable source data, inclusion criteria, human review/adjudication, provenance, references, intended meanings, group/split assignment, and leakage audit. The illustrative draft is not a study dataset.
-7. **Methods** — State the cumulative conditions (`direct_v1`, `normalized_v1`, `transliterated_v1`, `ambiguity_aware_v1`), provider/model/configuration, run order, exclusions, failures, missingness, and reproducibility metadata. Explain that blocked conditions have no outputs and are not scored as zero.
-8. **Measures** — Report the exact project-versioned BLEU-4 and chrF configurations from `evaluation_protocol.md`. Include per-condition available-output denominators separately from matched-ID paired contrast denominators. Include human semantic ratings only after actual independent review; report coverage and missingness.
-9. **Results** — Pending eligible artifacts. Provide counts and denominators before scores, and describe exclusions. No score, rating, significance test, or improvement is currently available.
-10. **Discussion and limitations** — Interpret only observed data; discuss metric/reference limits, annotator and provider uncertainty, resource coverage, confounds, and generalizability.
-11. **Conclusion** — Pending valid results. If readiness gates remain unmet, present the work as software and methodology infrastructure, not evidence of improvement.
-12. **Artifacts and ethics** — Cite the dataset license/provenance, annotation protocol, resource manifests, validated report, code revision, and data-handling approvals when available.
+3. **Introduction and motivation** — Motivate Telugu–English code-mixed text and Romanized Telugu. Define semantic preservation and separate motivation from evidence.
+4. **Research problem and objectives** — State the controlled question and objectives: compare direct translation with the cumulative approved interventions, measure reference similarity, and separately assess preservation of intended meaning.
+5. **Related work and cited sources** — Summarize primary sources listed in [`references.md`](references.md), including the cited IndicLID paper, and add verified sources before making further literature claims. Record versions and access dates for mutable sources.
+6. **Proposed methodology** — Define population, eligibility, annotation, controls, outcomes, exclusions, missingness, and analysis boundaries before inspecting results.
+7. **System architecture** — Describe the analysis API, four-condition contracts, resource gates, provider adapter, evaluator, report validator, and human-rating workflow. Distinguish implemented software from configured or qualified resources.
+8. **Dataset and annotation procedure** — Pending: legally usable source data, inclusion criteria, human review/adjudication, provenance, references, intended meanings, group/split assignment, and leakage audit. The illustrative draft is not a study dataset.
+9. **Linguistic resource design** — Describe resource manifest format, provenance/evidence requirements, coverage, applicability, entity-preservation review, qualification process, and actual resource status. Do not treat the illustrative ambiguity fixture or whitespace collapsing as a qualified resource.
+10. **Experimental design** — State the cumulative conditions (`direct_v1`, `normalized_v1`, `transliterated_v1`, `ambiguity_aware_v1`), provider/model/configuration, run order, failure handling, and reproducibility metadata. Blocked conditions have no output and are not scored as zero.
+11. **Evaluation metrics** — Report exact project-versioned BLEU-4 and chrF configurations from `evaluation_protocol.md`. Separate per-condition available-output denominators from matched-ID paired contrast denominators. Add human semantic ratings only after actual independent review, with coverage and missingness.
+12. **Results** — Pending eligible artifacts. Provide counts and denominators before scores and describe exclusions. No score, rating, significance test, or improvement is currently available.
+13. **Error analysis** — Pending genuine outputs and reviewed labels. Plan qualitative analysis by language/script pattern, resource application, provider failure, and semantic-preservation error, while protecting source data.
+14. **Limitations and threats to validity** — Interpret only observed data; discuss metric/reference limits, annotator and provider uncertainty, resource coverage, confounds, and generalizability.
+15. **Conclusion and future work** — Pending valid results. If readiness gates remain unmet, present the work as software and methodology infrastructure, not evidence of improvement.
+16. **Reproducibility details** — Record code revision, environment/dependency versions, dataset and resource versions/hashes, provider/model settings, exact inputs, command lines, report schema/metric versions, and authorization/ethics decisions when available.
 
 ## Presentation outline
 
