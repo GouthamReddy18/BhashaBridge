@@ -33,6 +33,8 @@ Phase 6D.3 validates saved report structure and internal consistency under the s
 
 Applying synthetic test transformations does not count as meaningful linguistic assistance or establish research efficacy. meaningful_assistance remains false until an independently reviewed production transformation mechanism is implemented.
 
+Phase 8 adds a versioned resource-manifest validator and an exact-match, fail-closed matcher. No genuine reviewed rule resource is available, reviewer/evidence declarations are unauthenticated, and the matcher is intentionally not connected to production experiment execution. Production transformations remain blocked; resource readiness must not be confused with linguistic validation.
+
 
 ### Phase 6C execution-order limits
 

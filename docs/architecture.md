@@ -12,6 +12,12 @@ The optional IndicLID FastText adapter is disabled by default and only loads loc
 
 Readiness distinguishes the implemented baseline from the optional model (`not_configured`, `configured`, `not_installed`, `available`, or `unavailable`). Overall readiness remains degraded because other pipeline stages are not implemented.
 
+## Linguistic resource manifests (Phase 8)
+
+`backend/app/schemas/linguistic_resource.py` defines version 1.0 JSON manifests for provenance-bearing rules, language coverage, per-rule version, applicability description, evidence references, review status, reviewer/date declarations, and entity-preservation status. Validate a manifest with `python backend/scripts/validate_linguistic_resource.py <manifest.json>`. Validation rejects duplicate JSON keys, duplicate rule IDs, unsupported labels, missing/inconsistent review metadata, and rules outside the declared language coverage. Readiness remains blocked for pending/rejected review, uncertain entity preservation, or an empty resource. The deterministic matcher uses exact case-folded surface and language matching, and abstains unless applicability and entity preservation are affirmatively supplied.
+
+Review and evidence fields are declarations and are not independently authenticated. No production resource is bundled, the manifest workflow does not create or approve rules, and the matcher is not wired into the paired experiment. Therefore production linguistic substitutions remain blocked; the current ambiguity fixture and seed lexicons remain illustrative/heuristic only. No unknown token is rewritten.
+
 ## Analyze API
 
 Request JSON: `{"text":"nenu college ki vellanu"}`. Response retains `original_text`, `normalized_text`, `tokens`, and `modules`. Each token retains its previous fields and adds `language` with `label`, `method`, and `evidence`; `confidence` appears only for optional model output. See the endpoint OpenAPI schema for the complete response.
