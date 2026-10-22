@@ -1,5 +1,11 @@
 # Project engineering status
 
+## Current checkpoint (Phases 16–26 engineering continuation)
+
+The four-condition experiment and evaluator infrastructure is present, but the research is not ready for execution. Phase 17 documents dataset acquisition and review. The current frontend redesign exposes the analysis API and an additive read-only project-readiness API; it reports current blockers and does not run experiments or display fabricated results. The readiness API and UI are integration infrastructure only. No qualified linguistic resource, eligible benchmark, real provider outputs, or human ratings have been produced. See [research readiness](phase16-research-readiness.md), [dataset acquisition/review](dataset-acquisition-and-review.md), and [the report/presentation outline](academic-report-and-presentation-outline.md).
+
+Remaining research gates are external to the software: obtain appropriately licensed source data, conduct documented human review and adjudication, qualify transformation resources, authorize/configure provider transmission, execute the preregistered evaluation, and collect human semantic ratings. Browser-based visual/device QA was unavailable in this environment, so usability still needs direct review.
+
 ## Current research-readiness checkpoint (Phase 16)
 
 The four-condition framework is implemented, but a genuine evaluation is **not ready**. No reviewed evaluation dataset, qualified normalization/transliteration/context resource, real provider artifact, or human rating is present. The 16-row illustrative draft remains structurally valid and intentionally ineligible. Phase 16 records the resource inventory and fixes evaluator fixture-taint gaps; no linguistic resource, annotation, rating, or research result was created. See [Phase 16 audit](phase16-research-readiness.md). The prior status below is retained as a historical engineering checkpoint; its statement that the current experiment framework is only two-arm is superseded by Phase 15.

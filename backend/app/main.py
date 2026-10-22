@@ -2,6 +2,7 @@ from fastapi import FastAPI, Request
 from pydantic import BaseModel
 
 from app.api.routes.analyze import router as analyze_router
+from app.api.routes.research import router as research_router
 from app.api.dependencies import get_translation_provider
 from app.services.language_identification import configured_model_status
 from app.services.google_translation import google_translation_readiness
@@ -9,6 +10,7 @@ from app.services.transliteration import configured_transliteration_status
 
 app = FastAPI(title="BhashaBridge 2.0", version="0.3.0", description="Whitespace normalization, Unicode tokenization, and conservative token-level language identification.")
 app.include_router(analyze_router)
+app.include_router(research_router)
 
 class ModuleStatus(BaseModel):
     name: str
@@ -47,6 +49,6 @@ def readiness(request: Request) -> dict[str, object]:
             detail="An application-injected provider is available; requests are opt-in."
             if translation_provider is not None else translation_status.detail,
         ),
-        ModuleStatus(name="evaluation", status="not_implemented", detail="No evaluation runner or results exist."),
+        ModuleStatus(name="evaluation", status="available", detail="Offline evaluation and report-validation tools are implemented; this analysis API does not execute experiments."),
     ]
     return {"status": "degraded", "ready": False, "modules": [m.model_dump() for m in modules]}
