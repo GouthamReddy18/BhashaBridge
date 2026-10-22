@@ -12,7 +12,7 @@
 | Annotation format and structural validation | Implemented and verified | Version 1.0 JSON Schema, annotation guidance, and read-only JSONL validator. Structural validity does not establish linguistic accuracy, permission to use a source, or actual review. |
 | Dataset eligibility | Implemented; real reviewed data unavailable | Readiness checks require completed human review, human-contributed field provenance, references, intended meaning, and group-aware split metadata. The 16 illustrative drafts are structurally valid but not eligible. |
 | Annotation and review workflow | Offline workflow implemented; human contribution required | `backend/scripts/annotation_workflow.py` scaffolds machine-labeled drafts, validates, checks readiness, records deterministic hash-linked revision manifests, and exports a whole ready dataset without overwriting. Human review/editing remains a manual task, and review claims are not authenticated. |
-| Dataset quality safeguards | Partly implemented; real-data validation pending | Structural checks cover duplicate IDs, malformed and duplicate-key JSON, tokenizer spans, field provenance consistency, and value constraints. Readiness detects split-group conflicts and exact normalized-source duplicates across splits. Paraphrase, shared-template, source-family, and semantic leakage still need human review and explicit group assignment. |
+| Dataset quality safeguards | Partly implemented; real-data validation pending | Structural checks cover duplicate IDs, malformed and duplicate-key JSON, tokenizer spans, field provenance consistency, and value constraints. Readiness detects split-group conflicts and blocks exact normalized-source duplicates within and across splits. Paraphrase, shared-template, source-family, and semantic leakage still need human review and explicit group assignment. |
 | English reference translations and intended meanings | Requires human contribution | The schema and readiness checker support them. No eligible reviewed examples are present. Machine suggestions are not references or reviewed meanings. |
 | Dataset provenance and licensing | Requires human contribution | Provenance fields and guidance exist, but claims are not independently authenticated and source permissions have not been established for an evaluation corpus. |
 | Paired experiment orchestration | Implemented and tested with fixtures; real execution unavailable | Stable direct/assisted arm identity, execution order, and per-arm outcomes are represented. The default assisted path has no verified linguistic replacements. There is no persistence or genuine eligible dataset to execute. |
@@ -42,7 +42,7 @@ The following sequence is proposed from the actual repository state and the supp
 
 1. **6E.1 Research readiness audit:** recorded here.
 2. **6E.2 Annotation workflow:** implemented in the offline CLI; the tool does not assign review metadata.
-3. **6E.3 Dataset quality safeguards:** close verified gaps in deterministic duplicate, split, group, and provenance diagnostics without rewriting annotations.
+3. **6E.3 Dataset quality safeguards:** exact duplicate normalized source text is now blocked within and across splits; paraphrase/template leakage still requires human review.
 4. **Phase 7 Provider adapter:** prepare a backward-compatible isolated adapter and mock-based tests; do not make external calls without explicit authorization.
 5. **Phase 8 Verified linguistic assistance:** implement provenance-aware resource infrastructure; production substitutions stay blocked until reviewed resources exist.
 6. **Phase 9 Reproducible experiment artifacts:** persist controlled runs only after eligibility and artifact safety requirements are met.
@@ -58,3 +58,7 @@ The project has functioning evaluation software but no genuine eligible benchmar
 ## Phase 6E.2 verification
 
 The annotation workflow's focused suite passed 6 tests, and the full backend suite passed 217 tests (exit 0). Workflow CLI help exited 0. The illustrative dataset still validates structurally (exit 0; 16 draft warnings) and remains `NOT READY` (exit 1; 144 errors and 16 warnings). The added workflow did not change the dataset. `git diff --check` exited 0 before the checkpoint.
+
+## Phase 6E.3 verification
+
+The readiness checker now blocks exact duplicate normalized source text within a split as well as across splits. The readiness and evaluation focused suites passed 54 tests, and the complete backend suite passed 218 tests (exit 0). The illustrative dataset remains structurally valid (exit 0; 16 draft warnings) and `NOT READY` (exit 1; 144 errors and 16 warnings). `git diff --check` exited 0 before the checkpoint. Near-duplicate, template, source-family, and semantic leakage still require human review.

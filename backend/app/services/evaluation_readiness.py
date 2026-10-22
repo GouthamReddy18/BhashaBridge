@@ -144,6 +144,8 @@ def check_evaluation_readiness(path: str | Path) -> EvaluationReadinessReport:
             previous = normalized_sources.get(normalized)
             if previous and previous[0] != split:
                 _add(errors, line, f"exact normalized source text crosses splits; first seen on line {previous[1]} (record {previous[2]})", rid)
+            elif previous:
+                _add(errors, line, f"duplicate normalized source text within split {split!r}; first seen on line {previous[1]} (record {previous[2]})", rid)
             else:
                 normalized_sources.setdefault(normalized, (split, line, rid))
 

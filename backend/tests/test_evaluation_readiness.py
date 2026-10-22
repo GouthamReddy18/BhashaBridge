@@ -117,6 +117,12 @@ class EvaluationReadinessTests(unittest.TestCase):
         report = self.validate_records(first, second)
         self.assertTrue(any("exact normalized source text crosses splits" in issue.message for issue in report.errors))
 
+    def test_duplicate_source_text_within_split_is_blocking(self):
+        first = make_record("first-row", split="test", group="shared-family")
+        second = make_record("second-row", split="test", group="shared-family")
+        report = self.validate_records(first, second)
+        self.assertTrue(any("duplicate normalized source text within split 'test'" in issue.message for issue in report.errors))
+
     def test_split_group_cannot_cross_splits(self):
         first = make_record("train-row", split="train", group="shared-family")
         second = make_record("test-row", text="nenu office", split="test", group="shared-family")
