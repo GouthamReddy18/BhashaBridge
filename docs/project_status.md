@@ -1,14 +1,14 @@
 # Project engineering status
 
 **Status checked:** 2026-10-22\
-**Checkpoint:** Phase 12 frontend implementation verified; Phase 11 reporting checkpoint is `f0d9412`.\
+**Checkpoint:** Phase 12 implementation commit `29aa426`; integration QA and delivery documentation verified on 2026-10-22.\
 **Roadmap note:** No independent master implementation roadmap was found in the repository. The later phase labels in the continuation prompt are proposed engineering stages, not verified original roadmap labels.
 
 ## Current readiness
 
 | Requirement | Status | Evidence and remaining work |
 |---|---|---|
-| Core analysis API | Implemented and verified | FastAPI health, readiness, and analysis endpoints; the 211-test backend suite passes. Rule-based labels and the narrow ambiguity example are not measured linguistic models. |
+| Core analysis API | Implemented and verified | FastAPI health, readiness, and analysis endpoints; the complete 258-test backend suite passed on 2026-10-22. Rule-based labels and the narrow ambiguity example are not measured linguistic models. |
 | Annotation format and structural validation | Implemented and verified | Version 1.0 JSON Schema, annotation guidance, and read-only JSONL validator. Structural validity does not establish linguistic accuracy, permission to use a source, or actual review. |
 | Dataset eligibility | Implemented; real reviewed data unavailable | Readiness checks require completed human review, human-contributed field provenance, references, intended meaning, and group-aware split metadata. The 16 illustrative drafts are structurally valid but not eligible. |
 | Annotation and review workflow | Offline workflow implemented; human contribution required | `backend/scripts/annotation_workflow.py` scaffolds machine-labeled drafts, validates, checks readiness, records deterministic hash-linked revision manifests, and exports a whole ready dataset without overwriting. Human review/editing remains a manual task, and review claims are not authenticated. |
@@ -22,9 +22,9 @@
 | Evaluation report integrity | Implemented and tested; provenance is not authenticated | Phase 6D.3 checks schema and internal consistency for saved reports. It does not authenticate source artifacts, independently recompute scores, or establish that provider output is genuine. |
 | Human semantic-preservation judgments | Workflow implemented; ratings require human contribution | Versioned 0–4 task/rating schema, pending templates, optional blind labels with a separate mapping key, range/provenance validation, and coverage-aware aggregation are implemented. No actual ratings exist and no inter-rater agreement is calculated. |
 | Statistical analysis and research conclusions | Deferred until genuine evidence exists | No eligible benchmark, paired real-provider outputs, or human judgments are available. No significance or causal-improvement claim is supported. |
-| Frontend | Implemented and build/integration verified | Calls the actual `/api/v1/analyze` workflow; translation stays explicit opt-in and evaluation/experiment controls remain absent. |
+| Frontend | Implemented and build/integration verified | Calls the actual `/api/v1/analyze` workflow; translation stays explicit opt-in and evaluation/experiment controls remain absent. Exact dependencies are locked; local production build and Vite-to-API proxy passed. |
 
-## Baseline verification at this checkpoint
+## Historical baseline verification at the Phase 6D.3 checkpoint
 
 Commands were run from the repository root on 2026-10-22:
 
@@ -96,3 +96,9 @@ Phase 11 verification passed 258 backend tests (exit 0); evaluation, human-ratin
 The frontend now calls the existing analysis endpoint and shows the real response's original/normalized text, token labels and evidence, transliteration outcomes, ambiguity decisions, module status, and optional translation outcome. There are no experiment, evaluation, or research-results controls. The translation checkbox is unchecked by default and warns that an explicitly requested translation may send text to a configured provider and incur charges. Vite proxies the API route to the local backend; separate-origin deployment requires a configured API base URL and suitable reverse-proxy/CORS setup. Input counting uses Unicode code points, consistent with backend Python string length. Frontend dependencies are pinned and lockfile-backed.
 
 Verification: `npm run build` passed with Node.js 22.15.0 and locked Vite 8.3.5 (exit 0). The first sandboxed build attempt could not traverse the system Node executable path; the same build passed after granting local process read access. No provider call or dataset transmission was made.
+
+## Phase 13 integration QA and Phase 14 delivery record
+
+The full backend suite passed 258 tests (exit 0). Draft structural validation passed with 16 records, 0 errors, and 16 expected unreviewed-draft warnings (exit 0); readiness remained `NOT READY` with 144 blockers and 16 warnings (expected exit 1). Evaluation, report-validator, research-report, and human-rating CLI help commands exited 0. `npm ci --offline` and `npm run build` exited 0. A local Vite-to-FastAPI smoke check returned HTTP 200 for the page and analysis route; the synthetic input returned four labeled tokens and `translation=disabled`. No evaluation artifact, provider request, human rating, or research result was produced. Frontend source checks found no credential patterns; root ignore rules cover `node_modules/` and `dist/`.
+
+The methodology now states that the current runner supports only direct-versus-assisted pairs, while the broader four-variant comparison remains a design/implementation gap. Installation/API setup and workflow documentation are linked from the README, architecture, protocol, dataset, annotation, limitation, and status documents. Scientific validation remains pending genuine eligible examples, verified transformations, real provider output, and human semantic ratings. Browser/device usability review and richer four-variant experiment orchestration remain engineering limitations.
