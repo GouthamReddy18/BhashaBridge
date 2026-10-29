@@ -6,6 +6,9 @@ const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 const MAX_INPUT_CHARS = 2000;
 const EXAMPLES = [
   { label: 'Romanized Telugu · illustrative', text: 'nenu college ki vellanu' },
+  { label: 'Pilot · basic code-mix', text: 'nenu office ki veltunna' },
+  { label: 'Pilot · technical term', text: 'project deadline extend cheyyadam possible aa?' },
+  { label: 'Pilot · adverbialized', text: 'vaadu chala smart ga matladutaadu' },
   { label: 'English · ambiguity fixture', text: 'The bank account is open' },
 ];
 const NAV_ITEMS = [['workspace', 'Analyze'], ['conditions', 'Conditions'], ['readiness', 'Readiness'], ['method', 'Method']];
@@ -86,6 +89,12 @@ function App() {
     window.setTimeout(() => setNotice(''), 2600);
   }
 
+  const datasetCount = readiness?.pilot_dataset
+    ? `${readiness.pilot_dataset.records_examined} pilot records · ${readiness.pilot_dataset.blocking_errors} readiness blockers`
+    : readiness?.dataset
+      ? `${readiness.dataset.records_examined} draft records · ${readiness.dataset.blocking_errors} readiness blockers`
+      : 'Readiness comes from the local API.';
+
   return (
     <>
       <a className="skip-link" href="#main">Skip to content</a>
@@ -125,7 +134,7 @@ function App() {
         <section className="readiness-ribbon" aria-label="Current research readiness">
           <div className="ribbon-label"><span className="status-pip blocked" /> CURRENT RESEARCH STATUS</div>
           <div className="ribbon-main">{readiness ? (readiness.research_ready ? 'Ready for evaluation' : 'Research evaluation is blocked') : readinessError || 'Checking research readiness…'}</div>
-          <div className="ribbon-detail">{readiness ? `${readiness.dataset.records_examined} illustrative records · ${readiness.dataset.blocking_errors} readiness blockers · no eligible resources` : 'Readiness comes from the local API.'}</div>
+          <div className="ribbon-detail">{readiness ? `${datasetCount} · no eligible resources` : 'Readiness comes from the local API.'}</div>
           <a href="#readiness" className="ribbon-link">See what is needed <span aria-hidden="true">→</span></a>
         </section>
 
@@ -162,7 +171,7 @@ function App() {
         </section>
 
         <section id="readiness" className="section readiness-section">
-          <SectionHeader number="03" kicker="RESEARCH READINESS" title={<>Infrastructure exists.<br /><em>Evidence comes later.</em></>} description="The local readiness endpoint checks the illustrative dataset and provider configuration. Resource availability is reported separately from research eligibility." />
+          <SectionHeader number="03" kicker="RESEARCH READINESS" title={<>Infrastructure exists.<br /><em>Evidence comes later.</em></>} description="The local readiness endpoint checks the illustrative dataset, pilot dataset, and provider configuration. Resource availability is reported separately from research eligibility." />
           {readiness ? <ReadinessDashboard readiness={readiness} /> : <div className="empty-panel" role="status">{readinessError || 'Checking the current project state…'}</div>}
         </section>
 
@@ -224,11 +233,78 @@ function ConditionCard({ condition, index }) {
 }
 
 function ReadinessDashboard({ readiness }) {
+  const [selectedDatasetKey, setSelectedDatasetKey] = useState('pilot');
+  const activeDataset = (selectedDatasetKey === 'pilot' && readiness.pilot_dataset)
+    ? readiness.pilot_dataset
+    : readiness.dataset;
+
   return <div className="readiness-grid">
-    <article className="readiness-card dataset-readiness"><div className="readiness-card-top"><span className="readiness-icon" aria-hidden="true">▤</span><StatusBadge status={readiness.dataset.evaluation_status} /></div><p className="card-index">DATASET · {readiness.dataset.name}</p><h3>{readiness.dataset.structural_status === 'valid' ? 'Format checks pass.' : 'Dataset structure needs review.'}</h3><p className="card-copy">The illustrative file has {readiness.dataset.records_examined} records, {readiness.dataset.structural_errors} structural errors, and {readiness.dataset.warnings} draft warnings.</p><div className="readiness-count"><strong>{readiness.dataset.blocking_errors}</strong><span>readiness blockers</span></div><ul className="blocker-list">{readiness.dataset.blocker_categories.map((item) => <li key={item}>{item}</li>)}</ul></article>
-    <article className="readiness-card provider-readiness"><div className="readiness-card-top"><span className="readiness-icon" aria-hidden="true">⇄</span><StatusBadge status={readiness.provider.status} /></div><p className="card-index">TRANSLATION PROVIDER</p><h3>External translation stays opt-in.</h3><p className="card-copy">{readiness.provider.detail}</p><p className="provider-code">{readiness.provider.provider_id}</p><p className="caveat-note">Romanized Telugu suitability has not been established. No provider call is made by this readiness check.</p></article>
-    <article className="readiness-card resource-readiness"><div className="readiness-card-top"><span className="readiness-icon" aria-hidden="true">⌘</span><span className="status-pill">RESOURCE INVENTORY</span></div><p className="card-index">LINGUISTIC RESOURCES</p><h3>No research-qualified transformation set.</h3><ul className="resource-list">{readiness.resources.map((resource) => <li key={resource.id}><div><strong>{resource.id.replaceAll('_', ' ')}</strong><StatusBadge status={resource.status} /></div><p>{resource.detail}</p></li>)}</ul></article>
-    <article className="readiness-card reports-readiness"><div className="readiness-card-top"><span className="readiness-icon" aria-hidden="true">⌁</span><StatusBadge status={readiness.evaluation_reports.status} /></div><p className="card-index">EVALUATION REPORTS</p><h3>No report catalog is connected.</h3><p className="card-copy">{readiness.evaluation_reports.detail}</p><p className="empty-explanation">This dashboard does not display generated or synthetic scores. Load a validated artifact through the offline CLI when eligible research outputs exist.</p></article>
+    <article className="readiness-card dataset-readiness">
+      <div className="readiness-card-top">
+        <span className="readiness-icon" aria-hidden="true">▤</span>
+        <StatusBadge status={activeDataset.evaluation_status} />
+      </div>
+      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.8rem' }}>
+        {readiness.pilot_dataset && (
+          <button
+            type="button"
+            className={selectedDatasetKey === 'pilot' ? 'sample-button is-active' : 'sample-button'}
+            onClick={() => setSelectedDatasetKey('pilot')}
+            style={{ padding: '0.2rem 0.5rem', fontSize: '0.62rem' }}
+          >
+            Pilot v0.1 ({readiness.pilot_dataset.records_examined})
+          </button>
+        )}
+        <button
+          type="button"
+          className={selectedDatasetKey === 'illustrative' ? 'sample-button is-active' : 'sample-button'}
+          onClick={() => setSelectedDatasetKey('illustrative')}
+          style={{ padding: '0.2rem 0.5rem', fontSize: '0.62rem' }}
+        >
+          Illustrative ({readiness.dataset.records_examined})
+        </button>
+      </div>
+      <p className="card-index">DATASET · {activeDataset.name}</p>
+      <h3>{activeDataset.structural_status === 'valid' ? 'Format checks pass.' : 'Dataset structure needs review.'}</h3>
+      <p className="card-copy">The file has {activeDataset.records_examined} records, {activeDataset.structural_errors} structural errors, and {activeDataset.warnings} draft warnings.</p>
+      <div className="readiness-count">
+        <strong>{activeDataset.blocking_errors}</strong>
+        <span>readiness blockers</span>
+      </div>
+      <ul className="blocker-list">
+        {activeDataset.blocker_categories.map((item) => <li key={item}>{item}</li>)}
+      </ul>
+    </article>
+    <article className="readiness-card provider-readiness">
+      <div className="readiness-card-top">
+        <span className="readiness-icon" aria-hidden="true">⇄</span>
+        <StatusBadge status={readiness.provider.status} />
+      </div>
+      <p className="card-index">TRANSLATION PROVIDER</p>
+      <h3>External translation stays opt-in.</h3>
+      <p className="card-copy">{readiness.provider.detail}</p>
+      <p className="provider-code">{readiness.provider.provider_id}</p>
+      <p className="caveat-note">Romanized Telugu suitability has not been established. No provider call is made by this readiness check.</p>
+    </article>
+    <article className="readiness-card resource-readiness">
+      <div className="readiness-card-top">
+        <span className="readiness-icon" aria-hidden="true">⌘</span>
+        <span className="status-pill">RESOURCE INVENTORY</span>
+      </div>
+      <p className="card-index">LINGUISTIC RESOURCES</p>
+      <h3>No research-qualified transformation set.</h3>
+      <ul className="resource-list">{readiness.resources.map((resource) => <li key={resource.id}><div><strong>{resource.id.replaceAll('_', ' ')}</strong><StatusBadge status={resource.status} /></div><p>{resource.detail}</p></li>)}</ul>
+    </article>
+    <article className="readiness-card reports-readiness">
+      <div className="readiness-card-top">
+        <span className="readiness-icon" aria-hidden="true">⌁</span>
+        <StatusBadge status={readiness.evaluation_reports.status} />
+      </div>
+      <p className="card-index">EVALUATION REPORTS</p>
+      <h3>No report catalog is connected.</h3>
+      <p className="card-copy">{readiness.evaluation_reports.detail}</p>
+      <p className="empty-explanation">This dashboard does not display generated or synthetic scores. Load a validated artifact through the offline CLI when eligible research outputs exist.</p>
+    </article>
   </div>;
 }
 

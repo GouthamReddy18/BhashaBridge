@@ -84,3 +84,17 @@ The configured order is deterministic and recorded, but it does not make provide
 The React/Vite frontend calls only the implemented `POST /api/v1/analyze` route. It renders the API's original and whitespace-normalized text, token labels/evidence, transliteration status, ambiguity records, module status, and opt-in translation result. The UI does not execute paired experiments, read evaluation datasets, aggregate human ratings, or claim research results. Its local Vite configuration proxies `/api` to the development backend; separate-origin hosting requires an explicitly configured API base URL and an appropriate deployment proxy/CORS policy. See [frontend setup](../frontend/README.md).
 
 The offline research path is separate: reviewed dataset JSONL passes the readiness checker before an experiment runner can call the explicitly configured provider; artifacts are scored by the evaluation CLI, checked by the report validator, and optionally composed into descriptive research output with ID-linked human-rating summaries. Each artifact validator establishes contract consistency, not provenance or reviewer authenticity. Drafts and deterministic mock outputs are software fixtures only. The legacy experiment runner retains its two stable arms (direct and assisted). Phase 15 adds a separate cumulative four-condition contract and CLIs without changing the legacy API or artifact schema. Reviewed production resources and an eligible benchmark are still unavailable; study claims must reflect that limit.
+
+## Pilot dataset and annotation import (Phases 28–29)
+
+Phase 28 establishes a 28-record researcher-authored pilot draft dataset (`data/drafts/pilot_examples.jsonl`) spanning 15 distinct Telugu–English code-mixed phenomena, accompanied by a versioned manifest (`data/pilot_v0.1_manifest.json`), an independent bilingual reviewer handoff package (`data/guidelines/reviewer_handoff.md`), and a 5-stage promotion checklist (`data/guidelines/annotation_promotion_checklist.md`).
+
+Phase 29 implements the offline reviewer annotation import service (`backend/app/services/annotation_import.py`) and CLI (`backend/scripts/import_annotations.py`). The importer:
+- Generates blank reviewer CSV templates populated from draft IDs and exact source utterances (`generate-template`).
+- Validates returned reviewer CSV submissions against the pilot draft dataset (`import`).
+- Enforces strict safeguards: rejects duplicate IDs, unlisted IDs, source text changes, blank intended meanings, blank reference translations, and missing reviewer declarations.
+- Safely merges valid submissions into an updated draft JSONL (`write_merged_dataset`) while retaining `annotation_status: draft` until human sign-off on Stage 4 of the promotion checklist.
+
+## Optional IndicXlit adapter
+
+`backend/app/services/indicxlit_adapter.py` provides an optional, lazy-loaded compatibility adapter adhering to BhashaBridge's transliteration engine protocol (`engine_id` and `transliterate()`). It is disabled by default, makes zero network requests, and downloads no assets. When invoked with an injected engine or local environment, it filters output candidates to valid Telugu script Unicode code points and contains all inference exceptions safely. Model outputs are treated as machine suggestions only and never replace human annotation.

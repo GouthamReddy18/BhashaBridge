@@ -75,6 +75,78 @@ Phase 15 adds a separate `four_condition.v1` cumulative experiment contract: exa
 
 The React/Vite frontend calls `POST /api/v1/analyze` and the read-only `GET /api/v1/research/readiness` endpoint. It displays token labels/evidence, normalization, transliteration status, ambiguity decisions, module status, provider configuration, four-condition blockers, and the outcome of an explicitly requested translation. Run the backend as above, then follow [frontend setup](frontend/README.md). Translation is unchecked by default; when enabled and a provider is configured, the API may send the sentence externally. Experiments, evaluation, and human ratings remain offline workflows; the frontend has no experiment controls or research score catalog.
 
+## Pilot dataset and reviewer annotation workflow (Phases 28–29)
+
+Phase 28 introduces a 28-example researcher-composed pilot draft corpus (`data/drafts/pilot_examples.jsonl`) covering 15 distinct Telugu–English code-mixed phenomena (e.g. basic code-mixing, borrowed technical terms, adverbialized adjectives, informal spellings, and negation). The dataset is registered in `data/pilot_v0.1_manifest.json`.
+
+An independent bilingual reviewer workflow is defined in `data/guidelines/reviewer_handoff.md` and governed by the 5-stage checklist in `data/guidelines/annotation_promotion_checklist.md`.
+
+Phase 29 adds the offline CLI `backend/scripts/import_annotations.py`:
+- **Generate reviewer template**:
+  ```powershell
+  python backend/scripts/import_annotations.py generate-template --pilot data/drafts/pilot_examples.jsonl --output data/guidelines/reviewer_annotation_template.csv
+  ```
+- **Validate & merge reviewer annotations**:
+  ```powershell
+  python backend/scripts/import_annotations.py import --pilot data/drafts/pilot_examples.jsonl --csv completed_reviewer_annotations.csv --output-jsonl data/drafts/pilot_merged_draft.jsonl
+  ```
+
+Imported records preserve `draft` status until explicitly promoted after independent bilingual review.
+
+## Optional IndicXlit transliteration adapter
+
+`backend/app/services/indicxlit_adapter.py` provides an optional, lazy-loaded compatibility wrapper adhering to the project's transliteration contract (`engine_id` and `transliterate()`).
+- Disabled by default (`BHASHABRIDGE_TRANSLITERATION_ENABLED=false`).
+- Performs no network downloads or background initialization.
+- Validates that outputs contain only valid Telugu script Unicode code points.
+- Contains all inference exceptions safely.
+- Real model weights and heavy dependencies require explicit separate installation and authorization. See [docs/optional_indicxlit_integration.md](docs/optional_indicxlit_integration.md).
+
+## Classroom demonstration procedure
+
+To demonstrate BhashaBridge safely in a classroom or review setting without incurrence of provider fees or fabrication of unverified research claims:
+
+### 1. Verification of the backend test suite
+Confirm software stability and integrity:
+```powershell
+$env:PYTHONPATH = "backend"
+python -m unittest discover -s backend/tests -v
+```
+*Expected result:* 315 passing tests across all modules.
+
+### 2. Dataset validation and readiness gates
+Demonstrate research rigor by showing that draft datasets pass structure checks but fail evaluation readiness until reviewed:
+```powershell
+# Structural checks pass (format is valid):
+python backend/scripts/validate_dataset.py data/drafts/pilot_examples.jsonl
+
+# Readiness gate blocks benchmark execution (exit code 1, 224 blocking errors):
+python backend/scripts/check_evaluation_readiness.py data/drafts/pilot_examples.jsonl
+```
+
+### 3. Reviewer annotation import CLI
+Demonstrate the reviewer handoff and strict rejection of corrupted submissions:
+```powershell
+# Inspect import CLI help:
+python backend/scripts/import_annotations.py --help
+```
+
+### 4. Interactive web application
+Launch the local backend and frontend:
+- **Terminal 1 (Backend):**
+  ```powershell
+  uvicorn app.main:app --app-dir backend --reload --port 8000
+  ```
+- **Terminal 2 (Frontend):**
+  ```powershell
+  npm run dev --prefix frontend
+  ```
+- **Explore in browser:**
+  - Try example code-mixed sentences such as `nenu office ki veltunna` or `project deadline extend cheyyadam possible aa?`.
+  - Inspect the token-level language identification, rule evidence, and character offsets.
+  - View the **Readiness Dashboard** to inspect the 28-record pilot dataset and 16-record illustrative dataset blockers.
+  - Notice that external translation remains disabled and unconfigured by default, preventing unintended API calls or charges.
+
 ## Current research status
 
-The illustrative draft is structurally valid but ineligible for genuine evaluation. No reviewed benchmark, qualified linguistic transformation resource, real-provider experiment output, or human semantic rating is available. The readiness endpoint reports these current blockers; it does not create evidence. See [the Phase 16 readiness audit](docs/phase16-research-readiness.md), [dataset review workflow](docs/dataset-acquisition-and-review.md), and [project status](docs/project_status.md). Project engineering work is complete through the interactive readiness dashboard, while research validation remains blocked on genuine reviewed inputs and outputs.
+The illustrative and pilot drafts are structurally valid but ineligible for genuine evaluation. No reviewed benchmark, qualified linguistic transformation resource, real-provider experiment output, or human semantic rating is available. The readiness endpoint reports these current blockers; it does not create evidence. See [the Phase 16 readiness audit](docs/phase16-research-readiness.md), [dataset review workflow](docs/dataset-acquisition-and-review.md), and [project status](docs/project_status.md). Project engineering work is complete through the interactive readiness dashboard, while research validation remains blocked on genuine reviewed inputs and outputs.

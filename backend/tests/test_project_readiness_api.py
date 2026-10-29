@@ -34,6 +34,21 @@ class ProjectReadinessApiTests(unittest.TestCase):
         self.assertEqual(conditions["transliterated_v1"]["status"], "blocked")
         self.assertEqual(conditions["ambiguity_aware_v1"]["status"], "blocked")
         self.assertEqual(payload["evaluation_reports"]["status"], "not_catalogued")
+        # Pilot dataset is also inspected and reported additively
+        self.assertIn("pilot_dataset", payload)
+        self.assertEqual(payload["pilot_dataset"]["name"], "pilot_examples.jsonl")
+        self.assertEqual(payload["pilot_dataset"]["records_examined"], 28)
+        self.assertEqual(payload["pilot_dataset"]["structural_errors"], 0)
+        self.assertEqual(payload["pilot_dataset"]["blocking_errors"], 224)
+
+    def test_readiness_query_param_selects_pilot_dataset(self):
+        response = client.get("/api/v1/research/readiness?dataset=pilot")
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["dataset"]["name"], "pilot_examples.jsonl")
+        self.assertEqual(payload["dataset"]["records_examined"], 28)
+        self.assertEqual(payload["dataset"]["blocking_errors"], 224)
+        self.assertEqual(payload["dataset"]["evaluation_status"], "not_ready")
 
     def test_readiness_endpoint_never_returns_paths_or_credentials(self):
         response = client.get("/api/v1/research/readiness")

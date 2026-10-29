@@ -10,6 +10,7 @@ from app.services.transliteration import configured_transliteration_status
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ILLUSTRATIVE_DATASET = PROJECT_ROOT / "data" / "drafts" / "illustrative_examples.jsonl"
+PILOT_DATASET = PROJECT_ROOT / "data" / "drafts" / "pilot_examples.jsonl"
 
 
 def _blocker_category(message: str) -> str:
@@ -31,15 +32,38 @@ def _blocker_category(message: str) -> str:
     return "Dataset structural or readiness requirements remain unmet."
 
 
-def project_research_readiness(dataset_path: str | Path = ILLUSTRATIVE_DATASET) -> dict:
-    """Summarize repository readiness without creating data or making provider calls."""
-    structural = validate_dataset(dataset_path)
-    readiness = check_evaluation_readiness(dataset_path)
-    provider = google_translation_readiness()
-    transliteration_status, transliteration_detail = configured_transliteration_status()
+def _inspect_dataset(path: Path) -> dict:
+    structural = validate_dataset(path)
+    readiness = check_evaluation_readiness(path)
     blocker_categories = sorted({_blocker_category(issue.message) for issue in readiness.errors})
     structurally_valid = structural.valid and structural.records_examined > 0
-    dataset_ready = readiness.ready
+    return {
+        "name": path.name,
+        "structural_status": "valid" if structurally_valid else "invalid_or_unavailable",
+        "evaluation_status": "ready" if readiness.ready else "not_ready",
+        "records_examined": readiness.records_examined,
+        "structural_errors": len(structural.errors),
+        "blocking_errors": len(readiness.errors),
+        "warnings": len(readiness.warnings),
+        "blocker_categories": blocker_categories,
+        "ready": readiness.ready,
+    }
+
+
+def project_research_readiness(dataset_path: str | Path | None = None) -> dict:
+    """Summarize repository readiness without creating data or making provider calls."""
+    if dataset_path is None or dataset_path == "illustrative":
+        active_dataset_path = ILLUSTRATIVE_DATASET
+    elif dataset_path == "pilot":
+        active_dataset_path = PILOT_DATASET
+    else:
+        active_dataset_path = Path(dataset_path)
+
+    active_summary = _inspect_dataset(active_dataset_path)
+    dataset_ready = active_summary["ready"]
+
+    provider = google_translation_readiness()
+    transliteration_status, transliteration_detail = configured_transliteration_status()
     provider_ready = provider.status == "configured"
 
     conditions = [
@@ -86,18 +110,22 @@ def project_research_readiness(dataset_path: str | Path = ILLUSTRATIVE_DATASET) 
             "detail": "The English bank rule is a fixture, not a reviewed Telugu-English resource.",
         },
     ]
-    return {
+
+    pilot_summary = None
+    if PILOT_DATASET.exists():
+        pilot_summary = _inspect_dataset(PILOT_DATASET)
+
+    # Clean active summary dict to exclude internal helper key
+    cleaned_active_dataset = {k: v for k, v in active_summary.items() if k != "ready"}
+    cleaned_pilot_dataset = (
+        {k: v for k, v in pilot_summary.items() if k != "ready"}
+        if pilot_summary is not None
+        else None
+    )
+
+    result = {
         "research_ready": bool(dataset_ready and provider_ready and all(item["status"] == "ready" for item in conditions)),
-        "dataset": {
-            "name": Path(dataset_path).name,
-            "structural_status": "valid" if structurally_valid else "invalid_or_unavailable",
-            "evaluation_status": "ready" if dataset_ready else "not_ready",
-            "records_examined": readiness.records_examined,
-            "structural_errors": len(structural.errors),
-            "blocking_errors": len(readiness.errors),
-            "warnings": len(readiness.warnings),
-            "blocker_categories": blocker_categories,
-        },
+        "dataset": cleaned_active_dataset,
         "provider": {
             "provider_id": PROVIDER_ID,
             "status": provider.status,
@@ -110,3 +138,8 @@ def project_research_readiness(dataset_path: str | Path = ILLUSTRATIVE_DATASET) 
             "detail": "Evaluation artifacts are explicit CLI inputs; no persistent report catalog is configured.",
         },
     }
+
+    if cleaned_pilot_dataset is not None:
+        result["pilot_dataset"] = cleaned_pilot_dataset
+
+    return result

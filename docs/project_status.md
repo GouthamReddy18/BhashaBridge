@@ -1,6 +1,29 @@
 # Project engineering status
 
-## Phase 28 — Original dataset curation and annotation workflow (2026-10-28)
+## Phase 29 — Reviewer import CLI and multi-dataset readiness dashboard (2026-10-29)
+
+Phase 29 completed the engineering recovery, audited uncommitted state, verified repository baseline, implemented the CLI entry point for reviewer annotation template generation and CSV import, expanded readiness diagnostics to cover both illustrative and pilot datasets, and verified the React frontend.
+
+**Verification run on 2026-10-29:**
+- Full backend test suite: exit 0; **315 tests** passed (313 prior + 2 new CLI import and pilot readiness tests).
+- Illustrative draft structural validation: exit 0; 16 records, 0 errors, 16 warnings.
+- Pilot draft structural validation (`data/drafts/pilot_examples.jsonl`): exit 0; 28 records, 0 errors, 28 warnings.
+- Pilot evaluation readiness: exit 1 (`NOT READY`, 224 blockers, 28 warnings). Expected and correct.
+- Report validator `--help`: exit 0.
+- Four-condition evaluator `--help`: exit 0.
+- Four-condition runner `--help`: exit 0.
+- Reviewer annotation import CLI (`backend/scripts/import_annotations.py --help`): exit 0.
+- Frontend production build (`npm run build --prefix frontend`): exit 0 (Vite v8.3.5, 0 errors).
+- `git diff --check`: exit 0; no whitespace errors.
+
+**Phase 29 deliverables:**
+- `backend/scripts/import_annotations.py` — CLI supporting `generate-template` and `import` with merged JSONL output.
+- `backend/app/services/project_readiness.py` & `backend/app/api/routes/research.py` — Additive multi-dataset inspection supporting both illustrative (16 records) and pilot (28 records) datasets without leaking filesystem paths.
+- `frontend/src.jsx` — Updated interactive workspace with pilot sample utterances and multi-dataset readiness tabs.
+- `backend/tests/test_annotation_import.py` & `backend/tests/test_project_readiness_api.py` — Regression tests for CLI and API behavior.
+
+**Research readiness status: BLOCKED.** The pilot dataset remains in draft status pending independent human bilingual review. No fabricated results, credentials, or simulated human ratings were introduced.
+
 
 Phase 28 implemented the dataset-curation and review workflow that Phase 27 identified as the critical blocker. See the files listed below.
 
