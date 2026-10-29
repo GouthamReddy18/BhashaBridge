@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.schemas.analysis import AnalyzeRequest, AnalyzedToken
+from app.services.indicxlit_adapter import IndicXlitAdapter
 from app.services.language_identification import RuleBasedTokenLanguageIdentifier
 from app.services.pipeline import analyze
 from app.services.tokenization import tokenize
@@ -29,6 +30,24 @@ class BrokenMetadataEngine(FakeEngine):
     @property
     def engine_id(self):
         raise RuntimeError("metadata failure")
+
+
+class FakeIndicXlitEngine:
+    engine_id = "fake-indicxlit-engine"
+    version = "v0-test"
+
+    def __init__(self, result="సుబ్రహ్మణ్యస్వామి"):
+        self.result = result
+
+    def translit_word(self, word, lang_code="default", topk=4, transliterate_numerals=False):
+        if lang_code == "default":
+            return {"te": [self.result]}
+        return [self.result]
+
+
+class BrokenIndicXlitEngine(FakeIndicXlitEngine):
+    def translit_word(self, word, lang_code="default", topk=4, transliterate_numerals=False):
+        raise RuntimeError("fake inference failure")
 
 
 def _annotated(text):
@@ -128,6 +147,29 @@ class TransliterationTests(unittest.TestCase):
         self.assertEqual(response.normalized_text, "nenu")
         self.assertEqual(response.tokens[0].language.label, "TELUGU_ROMANIZED")
         self.assertEqual(response.transliterations[0].status, "disabled")
+
+    def test_optional_adapter_is_disabled_by_default(self):
+        adapter = IndicXlitAdapter()
+        self.assertEqual(adapter.engine_id, "indicxlit-optional")
+        self.assertIsNone(adapter.transliterate("nenu"))
+
+    def test_optional_adapter_accepts_injected_fake_engine_and_preserves_telugu_validity(self):
+        adapter = IndicXlitAdapter(engine_factory=lambda: FakeIndicXlitEngine("సుబ్రహ్మణ్యస్వామి"), lang_code="te")
+        output = adapter.transliterate("nenu")
+        self.assertEqual(output, "సుబ్రహ్మణ్యస్వామి")
+        self.assertEqual(adapter.engine_id, "fake-indicxlit-engine")
+
+    def test_optional_adapter_rejects_english_and_invalid_outputs(self):
+        adapter = IndicXlitAdapter(engine_factory=lambda: FakeIndicXlitEngine("hello"))
+        self.assertIsNone(adapter.transliterate("hello"))
+        self.assertIsNone(IndicXlitAdapter(engine_factory=lambda: FakeIndicXlitEngine("")) .transliterate("nenu"))
+        self.assertIsNone(IndicXlitAdapter(engine_factory=lambda: FakeIndicXlitEngine(None)).transliterate("nenu"))
+
+    def test_optional_adapter_handles_missing_package_and_inference_exceptions(self):
+        adapter = IndicXlitAdapter(module_name="definitely_missing_module")
+        self.assertIsNone(adapter.transliterate("nenu"))
+        failing = IndicXlitAdapter(engine_factory=lambda: BrokenIndicXlitEngine())
+        self.assertIsNone(failing.transliterate("nenu"))
 
 
 if __name__ == "__main__":

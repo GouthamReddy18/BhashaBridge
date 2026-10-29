@@ -1,5 +1,50 @@
 # Project engineering status
 
+## Phase 28 — Original dataset curation and annotation workflow (2026-10-28)
+
+Phase 28 implemented the dataset-curation and review workflow that Phase 27 identified as the critical blocker. See the files listed below.
+
+**Verification run on 2026-10-28:**
+- Full backend test suite: exit 0; **307 tests** passed (274 prior + 33 new Phase 28 regression tests).
+- Illustrative draft structural validation: exit 0; 16 records, 0 errors, 16 warnings. Unchanged.
+- Pilot structural validation (`data/drafts/pilot_examples.jsonl`): exit 0; **28 records, 0 errors, 28 draft warnings.** Expected.
+- Pilot evaluation readiness: exit 1 (`NOT READY`, 224 blockers, 28 warnings). **Expected and correct.** No fabricated review or references.
+- Report validator `--help`: exit 0.
+- Four-condition evaluator `--help`: exit 0.
+- `git diff --check`: exit 0; no whitespace errors.
+
+**Phase 28 deliverables (all untracked — no commits made):**
+- `data/drafts/pilot_examples.jsonl` — 28 researcher-composed draft examples covering 15 distinct code-mixed phenomena.
+- `data/guidelines/reviewer_handoff.md` — Reviewer handoff package for an independent bilingual reviewer.
+- `data/guidelines/annotation_promotion_checklist.md` — Staged promotion checklist (5 stages, draft → reviewed → split-assigned → eligible).
+- `data/pilot_v0.1_manifest.json` — Versioned dataset manifest recording source categories, rights status (pending), limitations, and eligibility (not eligible).
+- `backend/tests/test_phase28_dataset_curation.py` — 33 regression tests protecting the curation workflow.
+
+**Research readiness status: BLOCKED.** The pilot is structurally valid but NOT READY. The research-readiness gate is preserved. No fabricated review, reference translation, or experimental output was introduced.
+
+**Remaining blocker requiring a human:** An independent bilingual Telugu–English reviewer must perform Stage 2 of the promotion checklist before any record can become research-eligible.
+
+## Phase 27 research resource audit (2026-10-27)
+
+Phase 27 completed the research resource discovery, qualification, and dataset acquisition planning that was interrupted at the previous session boundary. See [the Phase 27 audit](phase27-resource-audit.md) for the full evidence-backed investigation.
+
+**Verification run on 2026-10-27:**
+- Full backend test suite: exit 0; **274 tests** passed.
+- Draft structural validation: exit 0; 16 records, 0 errors, 16 unreviewed-draft warnings.
+- Draft evaluation readiness: exit 1 (`NOT READY`, 144 blockers, 16 warnings). Expected; the illustrative draft was not modified.
+- Report validator `--help`: exit 0.
+- Four-condition evaluator `--help`: exit 0.
+- `git diff --check`: exit 0; no whitespace errors.
+
+No code was changed, no data was modified, and no external calls were made. The three local commits ahead of `origin/main` (`c0b1e70`, `477d6ef`, `d3a4f3a`) are Phase 26 engineering work; they have not been pushed and no new commits were made.
+
+**Research summary from Phase 27 audit:**
+- No confirmed public Telugu–English code-mixed corpus with sentence-level English references and a permissive license was found. ICON 2016 (language-identification corpus) is a plausible candidate but has unresolved licensing and does not include sentence-level English references. UD_Telugu-MTG is a native-script monolingual treebank (CC BY-SA 4.0), not applicable. No verified synthetic Telugu–English corpus with references was found.
+- **Recommended acquisition strategy: Hybrid (Strategy C).** Compose 20–30 original code-mixed examples; have an independent bilingual reviewer write reference translations and intended meanings before any condition runs.
+- Normalization, transliteration, and contextual disambiguation resources all remain unqualified. IndicXlit is a candidate transliteration resource; qualification requires authorization and human review.
+- Google Cloud Translation Basic v2 remains disabled and unconfigured. Enabling it and making API calls requires explicit user/supervisor authorization.
+- **Recommended next action:** Compose the original example set and begin the annotation and review workflow.
+
 ## Current checkpoint (Phases 16–26 engineering continuation)
 
 The four-condition experiment and evaluator infrastructure is present, but the research is not ready for execution. Phase 17 documents dataset acquisition and review. The current frontend redesign exposes the analysis API and an additive read-only project-readiness API; it reports current blockers and does not run experiments or display fabricated results. The readiness API and UI are integration infrastructure only. No qualified linguistic resource, eligible benchmark, real provider outputs, or human ratings have been produced. See [research readiness](phase16-research-readiness.md), [dataset acquisition/review](dataset-acquisition-and-review.md), and [the report/presentation outline](academic-report-and-presentation-outline.md).

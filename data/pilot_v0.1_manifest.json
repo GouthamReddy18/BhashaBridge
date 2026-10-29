@@ -1,0 +1,72 @@
+{
+  "manifest_version": "0.1",
+  "dataset_id": "bhashabridge-pilot-v0.1",
+  "dataset_purpose": "Workflow validation pilot for the BhashaBridge 2.0 four-condition experiment. Designed to test the annotation, review, and promotion pipeline. Not an evaluation benchmark. Not eligible for research scoring.",
+  "creation_method": "Researcher-composed constructed examples. All 28 examples were authored by the BhashaBridge research team specifically for this dataset. None are real user conversations, social-media posts, or collected utterances.",
+  "source_categories": {
+    "project_authored_constructed": 28,
+    "externally_collected": 0,
+    "synthetic_machine_generated": 0
+  },
+  "source_language": "Telugu-English code-mixed (Romanized Telugu in Latin script mixed with English)",
+  "reference_language": "English (to be supplied by independent bilingual reviewer)",
+  "annotation_guideline_version": "1.0",
+  "schema_version": "1.0",
+  "schema_path": "data/schema/annotation.schema.json",
+  "dataset_path": "data/drafts/pilot_examples.jsonl",
+  "review_status": "NO_REVIEW_PERFORMED",
+  "record_counts": {
+    "total": 28,
+    "annotation_status_draft": 28,
+    "annotation_status_reviewed": 0,
+    "with_reference_translation": 0,
+    "with_intended_meaning": 0,
+    "with_split_assignment": 0,
+    "with_ambiguity_annotation": 0,
+    "excluded": 0
+  },
+  "split_counts": {
+    "train": 0,
+    "validation": 0,
+    "test": 0,
+    "unassigned": 28
+  },
+  "exclusion_log": [],
+  "phenomenon_coverage": {
+    "basic_te_en_codemix": ["pilot-001", "pilot-002", "pilot-003"],
+    "english_technical_terms_in_telugu_frame": ["pilot-004", "pilot-006", "pilot-015"],
+    "english_adjective_adverbialized": ["pilot-005", "pilot-010"],
+    "spelling_variation": ["pilot-007", "pilot-020"],
+    "abbreviation_or_informal_form": ["pilot-008", "pilot-012"],
+    "negation": ["pilot-003", "pilot-007", "pilot-009", "pilot-016", "pilot-026"],
+    "number_and_quantity": ["pilot-023", "pilot-027"],
+    "named_entity_protection": ["pilot-021"],
+    "ambiguity_context_dependent": ["pilot-018", "pilot-019", "pilot-022"],
+    "meaning_preservation_risk": ["pilot-019", "pilot-026"],
+    "normalization_should_abstain": ["pilot-002", "pilot-028"],
+    "transliteration_candidate": ["pilot-010", "pilot-011", "pilot-024"],
+    "borrowed_english_morphology": ["pilot-012", "pilot-014"],
+    "compound_noun_phrase": ["pilot-014", "pilot-025"],
+    "question_forms": ["pilot-002", "pilot-015", "pilot-020", "pilot-022"]
+  },
+  "rights_and_licensing": {
+    "status": "PENDING",
+    "note": "All 28 examples were composed by the BhashaBridge research team. No external source rights apply. Intended licensing decision has not been made. Record as pending until the project team makes an explicit licensing decision.",
+    "redistribution_constraints": "None established — pending licensing decision.",
+    "consent_requirements": "Not applicable — no real user data."
+  },
+  "known_limitations": [
+    "All examples are researcher-constructed. They may not represent natural spelling variation, regional usage, or informal conversation patterns found in real code-mixed social media text.",
+    "No independent human review has been performed. All language labels, draft interpretations, and annotation notes are researcher-supplied hypotheses.",
+    "Reference translations and intended meanings are absent. Records remain structurally valid drafts only.",
+    "No split assignment has been performed. Leakage controls are not yet in effect.",
+    "A constructed pilot with 28 examples cannot support statistically powered claims about translation quality or general system superiority.",
+    "The pilot's purpose is workflow validation and annotator calibration, not empirical evaluation."
+  ],
+  "research_eligibility": {
+    "eligible_for_evaluation": false,
+    "reason": "Independent human review has not been performed. Reference translations and intended meanings are absent. Split assignments are absent. Readiness checker exits 1 (NOT READY). This dataset must not be used for research scoring or BLEU/chrF computation."
+  },
+  "preparation_date": "2026-10-28",
+  "prepared_by": "BhashaBridge research team (automated pipeline validation only; no human review record)"
+}
