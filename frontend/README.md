@@ -1,6 +1,6 @@
-# BhashaBridge 2.0 — The Language Observatory Frontend
+# LipiPrism — The Language Observatory Frontend
 
-A presentation-quality computational linguistics research interface and interactive language observatory for Telugu–English code-mixed natural language processing. Built with React 19 and Vite 8.
+A presentation-quality computational linguistics research interface and interactive language observatory for Telugu–English code-mixed natural language processing. Built with React 19 and Vite 8. Formerly developed under the project working name BhashaBridge.
 
 The interface connects directly to the FastAPI backend:
 - `POST /api/v1/analyze`: Real-time token analysis, Unicode offsets, conservative language identification, transliteration suggestions, and contextual ambiguity inspection.
@@ -8,9 +8,10 @@ The interface connects directly to the FastAPI backend:
 
 ## Design Concept & Architecture
 
-**The Language Observatory** conceptualizes code-mixed NLP as a bridge between multiple linguistic representations: Romanized Telugu, native Telugu script, syntax, and English semantic meaning.
+**The Language Observatory** conceptualizes code-mixed NLP through the prism metaphor: examining one raw code-mixed utterance across multiple distinct linguistic dimensions (morphological normalization, selective script transliteration, syntactic tagging, and contextual disambiguation).
 
 ### Visual Foundations
+- **Prism Geometric Mark:** Geometric optical prism dispersing incident multilingual input into distinct colored spectral rays (`#D5F36A` lime, `#82C9C0` teal, `#FF7856` coral).
 - **Color Palette:** Deep charcoal/forest surfaces (`#0D1312`, `#182321`), warm ivory text (`#E8E9DB`), electric lime highlights (`#D5F36A`), restrained coral alerts (`#FF7856`), and accent teal (`#82C9C0`).
 - **Typography:** Modern editorial display with bilingual Telugu script support (`Plus Jakarta Sans`, `Space Grotesk`, `Noto Sans Telugu`, `JetBrains Mono`).
 - **Telemetry Aesthetics:** Mathematical coordinate grids, crosshairs, stream telemetry indicators, and glowing status pills.
@@ -28,8 +29,8 @@ frontend/
     ├── constants.js            # Exemplar phenomena, pipeline stages, condition metadata
     ├── App.jsx                 # Top-level orchestrator & global toast notifications
     └── components/
-        ├── Header.jsx          # Sticky observatory navigation with live pulse telemetry
-        ├── Hero.jsx            # Bilingual headline & interactive word-stream morpher
+        ├── Header.jsx          # Sticky observatory navigation with prism mark & live pulse telemetry
+        ├── Hero.jsx            # Bilingual headline (లిపి ప్రిజం) & interactive word-stream morpher
         ├── LanguageLab.jsx     # Utterance console, token stream journey & inspector
         ├── PipelineExplorer.jsx# 8-stage interactive laboratory pipeline blueprint
         ├── ResearchObservatory.jsx # Live readiness monitor (pilot vs illustrative toggle)
@@ -59,12 +60,3 @@ Requires Node.js `^20.19.0` or `>=22.12.0`.
    npm ci
    npm run dev
    ```
-
-3. Build for production:
-   ```powershell
-   npm run build
-   ```
-
-## Scientific Integrity Safeguards
-- **Honest Gates:** The Research Observatory never fabricates BLEU-4 or chrF scores; evaluation status is visibly displayed as `RESEARCH EVALUATION IS STRICTLY BLOCKED` until verified human references are supplied.
-- **Local Isolation:** Machine translation requests are disabled by default. Sentences stay inside the local API boundary unless the user explicitly checks the translation opt-in box.

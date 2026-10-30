@@ -1,5 +1,5 @@
 /**
- * BhashaBridge API client.
+ * LipiPrism API client.
  * Connects to FastAPI backend routes:
  * - POST /api/v1/analyze
  * - GET  /api/v1/research/readiness

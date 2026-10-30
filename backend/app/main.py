@@ -8,7 +8,7 @@ from app.services.language_identification import configured_model_status
 from app.services.google_translation import google_translation_readiness
 from app.services.transliteration import configured_transliteration_status
 
-app = FastAPI(title="BhashaBridge 2.0", version="0.3.0", description="Whitespace normalization, Unicode tokenization, and conservative token-level language identification.")
+app = FastAPI(title="LipiPrism (formerly BhashaBridge)", version="0.3.0", description="Whitespace normalization, Unicode tokenization, and conservative token-level language identification.")
 app.include_router(analyze_router)
 app.include_router(research_router)
 

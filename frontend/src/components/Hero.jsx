@@ -39,16 +39,16 @@ export function Hero({ readiness }) {
         <div className="hero-split">
           <div className="hero-lead">
             <h1 className="hero-headline">
-              <span className="hero-glyph" lang="te" aria-label="Bhasha Vantena">భాషా వంతెన</span>
+              <span className="hero-glyph" lang="te" aria-label="Lipi Prism">లిపి ప్రిజం</span>
               <span className="hero-main-title">
-                Bridging code-mixed Telugu to <em className="glow-em">computational meaning.</em>
+                One utterance. <em className="glow-em">Multiple linguistic dimensions.</em>
               </span>
             </h1>
 
             <p className="hero-description">
-              An explainable NLP research framework investigating whether explicit linguistic
-              normalization, selective transliteration, and contextual ambiguity resolution preserve
-              authentic meaning when translating Romanized Telugu–English text.
+              LipiPrism is an explainable NLP research framework examining Romanized Telugu–English
+              code-mixed utterances across explicit linguistic dimensions: morphological normalization,
+              selective transliteration, and contextual disambiguation.
             </p>
 
             <div className="hero-actions">

@@ -1,4 +1,6 @@
-# Architecture
+# LipiPrism Architecture
+
+> **Identity Note:** The framework was rebranded from BhashaBridge to **LipiPrism** (*One utterance. Multiple linguistic dimensions.*). To ensure zero regression, reproducibility, and stable backward compatibility with existing automated evaluation harnesses, internal Python package structures, versioned metric packages (`bhashabridge.metrics`), and environment variable prefixes (`BHASHABRIDGE_*`) are intentionally maintained.
 
 The FastAPI backend exposes `GET /health`, `GET /ready`, `GET /api/v1/research/readiness`, and `POST /api/v1/analyze`. The readiness route is a read-only local summary of the configured draft dataset, registered provider configuration, known resource states, four-condition blockers, and report-catalog status. It does not call providers or execute experiments. It returns blocker categories and a dataset basename, not local filesystem paths or credentials. The analyze request accepts optional `translate: true`; omission or `false` preserves the analysis-only path. The pipeline runs request validation, whitespace normalization, tokenization, token-level language identification, selective transliteration, then ambiguity detection and contextual resolution. It preserves the original request; token offsets are start-inclusive/end-exclusive Python Unicode code-point positions in normalized text.
 

@@ -14,7 +14,7 @@ export function MethodologySection() {
           Methodology & Limits: <span className="text-tint">Honest Computational Linguistics</span>
         </h2>
         <p className="section-sub">
-          BhashaBridge enforces explicit methodological boundaries. We treat automatic metrics
+          LipiPrism enforces explicit methodological boundaries. We treat automatic metrics
           as surface-overlap approximations rather than definitive semantic validation.
         </p>
       </div>
@@ -34,7 +34,7 @@ export function MethodologySection() {
           </p>
           <p>
             Standard translation engines trained predominantly on native Telugu script often fail or
-            hallucinate on code-mixed Romanized sentences. BhashaBridge evaluates whether explicit,
+            hallucinate on code-mixed Romanized sentences. LipiPrism evaluates whether explicit,
             transparent linguistic transformations improve translation fidelity.
           </p>
         </article>

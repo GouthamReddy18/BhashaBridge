@@ -1,5 +1,5 @@
 /* ==========================================================================
-   BhashaBridge 2.0 — The Language Observatory
+   LipiPrism — The Language Observatory
    Computational Linguistics & NLP Research Laboratory
    Theme: Deep Forest Charcoal, Warm Ivory, Electric Lime, Coral & Teal
    ========================================================================== */
@@ -334,6 +334,17 @@ button, input, textarea {
   background: var(--bg-surface);
   border: 1px solid var(--border-bright);
   border-radius: 6px;
+  overflow: hidden;
+}
+
+.prism-mark {
+  background: linear-gradient(135deg, rgba(19, 27, 25, 0.95), rgba(24, 35, 33, 0.95));
+}
+
+.prism-svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 0 3px rgba(130, 201, 192, 0.4));
 }
 
 .mark-node {

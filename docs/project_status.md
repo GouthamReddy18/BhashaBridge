@@ -1,5 +1,12 @@
 # Project engineering status
 
+## Phase 30 — LipiPrism Rebranding & Observatory Architecture (2026-10-30)
+
+Rebranded project presentation and visible interface from BhashaBridge to **LipiPrism** (*One utterance. Multiple linguistic dimensions.*), emphasizing the multi-dimensional examination of code-mixed text across morphological normalization, selective transliteration, and contextual disambiguation.
+- Designed original SVG geometric prism brand mark with spectral ray dispersion.
+- Rebranded frontend observatory components (`Header`, `Hero`, `Footer`, `LanguageLab`, `MethodologySection`).
+- Updated project metadata and documentation while maintaining complete backward compatibility with `BHASHABRIDGE_*` environment variables, `bhashabridge.metrics v1.0.0`, and internal API/schema contracts.
+
 ## Phase 29 — Reviewer import CLI and multi-dataset readiness dashboard (2026-10-29)
 
 Phase 29 completed the engineering recovery, audited uncommitted state, verified repository baseline, implemented the CLI entry point for reviewer annotation template generation and CSV import, expanded readiness diagnostics to cover both illustrative and pilot datasets, and verified the React frontend.

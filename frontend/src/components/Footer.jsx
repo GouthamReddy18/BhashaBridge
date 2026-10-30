@@ -6,12 +6,12 @@ export function Footer() {
       <div className="footer-inner">
         <div className="footer-col-main">
           <div className="footer-brand">
-            <span className="brand-accent">BHASHA</span>
-            <span className="brand-main">BRIDGE</span>
-            <span className="brand-tag">RESEARCH LAB 2.0</span>
+            <span className="brand-accent">LIPI</span>
+            <span className="brand-main">PRISM</span>
+            <span className="brand-tag">THE LANGUAGE OBSERVATORY</span>
           </div>
           <p className="footer-tagline">
-            Explainable NLP research for Romanized Telugu–English code-mixed communication.
+            One utterance. Multiple linguistic dimensions. Explainable NLP research for Romanized Telugu–English code-mixed communication.
           </p>
           <p className="footer-integrity-caveat">
             <strong>Scientific Integrity Statement:</strong> Engineering readiness is not empirical research evidence.
@@ -44,7 +44,7 @@ export function Footer() {
       </div>
 
       <div className="footer-bottom-bar">
-        <span>© 2026 BhashaBridge Research Team · Open Source NLP Framework</span>
+        <span>© 2026 LipiPrism Research Team (formerly BhashaBridge) · Open Source NLP Framework</span>
         <span>Coordinates: 17.3850° N, 78.4867° E // Hyderabad, India</span>
       </div>
     </footer>

@@ -1,5 +1,6 @@
 /**
- * BhashaBridge — The Language Observatory
+ * LipiPrism — The Language Observatory
+ * One utterance. Multiple linguistic dimensions.
  * Constants, Phenomenon presets, and Pipeline specifications.
  *
  * Component Design Inspiration:

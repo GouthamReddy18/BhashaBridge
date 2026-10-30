@@ -42,7 +42,7 @@ export function LanguageLab({ onNotify }) {
       if (err.name === 'AbortError') {
         setError('Request timed out. The local backend took too long to respond.');
       } else if (err.message && err.message.includes('Failed to fetch')) {
-        setError('Cannot reach BhashaBridge API at http://127.0.0.1:8000. Ensure the backend is running.');
+        setError('Cannot reach LipiPrism API at http://127.0.0.1:8000. Ensure the backend is running.');
       } else {
         setError(err.message || 'Analysis failed.');
       }
@@ -530,7 +530,7 @@ export function LanguageLab({ onNotify }) {
                 {result.translation.status === 'disabled' && (
                   <div className="trans-box">
                     <p className="trans-intro">
-                      Translation was not requested. Analysis was conducted locally within the BhashaBridge
+                      Translation was not requested. Analysis was conducted locally within the LipiPrism
                       API boundary with zero external network transmission.
                     </p>
                   </div>

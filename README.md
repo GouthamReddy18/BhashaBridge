@@ -1,6 +1,12 @@
-# BhashaBridge 2.0
+# LipiPrism: A Linguistic Analysis and Controlled Translation Framework for Romanized Telugu–English Code-Mixed Text
 
-An explainable research prototype for Telugu-English code-mixed language understanding, including Telugu written in Latin script. The backend implements conservative whitespace normalization, Unicode tokenization, token-level language identification, optional selective transliteration, and an opt-in translation-provider seam. No real translation provider is configured or bundled.
+> **One utterance. Multiple linguistic dimensions.**
+> *Formerly developed under the project working name **BhashaBridge**.*
+
+LipiPrism is an explainable research prototype for Telugu–English code-mixed language understanding, including Telugu written in Latin script (Romanized Telugu). The framework conceptualizes code-mixed processing through an optical prism metaphor: examining one raw utterance across multiple distinct linguistic dimensions—conservative whitespace normalization, Unicode tokenization, token-level language identification, optional selective transliteration, and an opt-in translation-provider seam. No real translation provider is configured or bundled.
+
+> [!NOTE]
+> For backwards compatibility, stable test harness execution, and versioned evaluation integrity, existing internal environment variable prefixes (e.g. `BHASHABRIDGE_TRANSLITERATION_ENABLED`, `BHASHABRIDGE_ENV`), Python package structure, and evaluation metric contracts (`bhashabridge.metrics v1.0.0`) are intentionally preserved.
 
 ## Current status
 Implemented: `GET /health`, `GET /ready`, and `POST /api/v1/analyze`; original-text preservation; normalization and token offsets; punctuation/number rules; Telugu script detection; small exact-match English and Romanized Telugu lexicons; unknown abstention; opt-in transliteration trace records. The optional IndicLID FastText adapter is disabled unless local model paths and configuration are provided. Transliteration is disabled by default and requires a verified offline engine supplied by the application.
@@ -104,7 +110,7 @@ Imported records preserve `draft` status until explicitly promoted after indepen
 
 ## Classroom demonstration procedure
 
-To demonstrate BhashaBridge safely in a classroom or review setting without incurrence of provider fees or fabrication of unverified research claims:
+To demonstrate LipiPrism safely in a classroom or review setting without incurrence of provider fees or fabrication of unverified research claims:
 
 ### 1. Verification of the backend test suite
 Confirm software stability and integrity:
