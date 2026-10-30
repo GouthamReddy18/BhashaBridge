@@ -206,27 +206,38 @@ Record your recommendation and the reason. The project team will make the final 
 
 ## 13. How to record your review
 
-For each example, complete the fields in the **reviewer annotation form** (see the companion template file `review_template.md` or the offline annotation log).
+For each example, complete the columns in the companion CSV template file (`reviewer_annotation_template.csv`).
 
-Record:
+The CSV template contains 17 columns. Every row corresponds to one pilot example (`pilot-001` through `pilot-028`):
 
-| Field | What to enter |
-|---|---|
-| **Example ID** | The `id` field (e.g., `pilot-001`). Do not change it. |
-| **Source text** | Copy the `text` field exactly as you received it. Do not edit it. |
-| **Intended meaning** | Your independent assessment of what the speaker meant. |
-| **English reference translation** | Your English translation. |
-| **Language label corrections** | Any labels you disagree with, with reasons. |
-| **Ambiguity notes** | Both interpretations and evidence, if ambiguous. |
-| **Protected entities** | Tokens that must not be normalized or transliterated. |
-| **Normalization judgment** | Whether proposed normalizations preserve meaning. |
-| **Transliteration judgment** | Whether proposed transliterations preserve meaning and are appropriate. |
-| **Exclusion recommendation** | Yes/no; reason if yes. |
-| **Your reviewer ID or pseudonym** | A stable pseudonymous identifier you will use for all reviews. |
-| **Review date** | The date you completed the review (YYYY-MM-DD). |
-| **Notes** | Any additional observations, uncertainties, or questions. |
+### Per-Example Columns (Rows 1–28)
 
-> **Your reviewer ID will appear in the published dataset record.** Use a pseudonym if you prefer not to use your real name.
+| Column Header | Status | What to enter | Allowed values / Requirements |
+|---|---|---|---|
+| `example_id` | **Pre-filled** | Example identifier (e.g., `pilot-001`). | Do not modify. |
+| `source_text_confirmation` | **Pre-filled** | Exact original utterance text. | Do not edit or modify. |
+| `intended_meaning` | **Required** | Your independent assessment of what the speaker meant. | Non-empty description in English. |
+| `reference_translation` | **Required** | Natural English translation conveying the intended meaning. | Non-empty natural English sentence. |
+| `ambiguity_status` | **Required** | Whether the utterance has context-dependent ambiguity. | Must be exactly: `none`, `detected`, or `abstained`. |
+| `alternative_interpretations` | Optional | If `detected` or `abstained`, note alternative readings. | Text description of alternative interpretations. |
+| `label_corrections` | Optional | Corrections to baseline token language labels. | e.g. `nenu: TELUGU_ROMANIZED; veltunna: TELUGU_ROMANIZED`. |
+| `reviewer_notes` | Optional | Observations, cultural context, or uncertainties. | Text notes. |
+| `protected_entities` | Optional | Tokens/entities that must NOT be normalized or transliterated. | e.g. `WhatsApp`, brand names, person names. |
+| `normalization_judgment` | Optional | Whether proposed spelling normalizations preserve meaning. | e.g. `preserves_meaning`, `alters_meaning`, or `n/a`. |
+| `transliteration_judgment` | Optional | Whether transliterating Romanized Telugu tokens to Telugu script preserves meaning. | e.g. `appropriate`, `inappropriate`, or `n/a`. |
+| `exclude_recommendation` | Optional | Flag if the utterance should be excluded from evaluation. | `yes` if recommending exclusion; otherwise leave blank or `no`. |
+
+### Reviewer Metadata & Declarations (Required on every row, or repeated consistently)
+
+| Column Header | Status | What to enter | Expected Value |
+|---|---|---|---|
+| `reviewer_id` | **Required** | Stable pseudonymous identifier for the reviewer. | e.g., `rev-te-01` (avoid placeholders like `test` or `tbd`). |
+| `language_competency_declaration` | **Required** | Declaration of bilingual Telugu–English proficiency. | e.g., `native Telugu, fluent English` or `yes`. |
+| `guideline_version` | **Required** | Version of the annotation guidelines followed. | Must be `1.0`. |
+| `saw_system_outputs` | **Required** | Whether the reviewer saw any model/system translation outputs prior to reviewing. | Must be `no` (or `false`) to ensure independent reference generation. |
+| `independence_declaration` | **Required** | Declaration that reviewer is independent of system development. | Must be `yes`. |
+
+> **Pseudonyms:** Your `reviewer_id` will appear in the published dataset record and audit trail. Use a pseudonym (e.g., `rev-te-01`) if you prefer not to use your real name.
 
 ---
 
@@ -260,4 +271,33 @@ Do not guess or fabricate an interpretation when you are genuinely uncertain. An
 
 ---
 
-*Reviewer Handoff Package prepared for BhashaBridge 2.0, Phase 28. This package is for independent reviewers only and does not constitute project documentation of a completed review.*
+## 17. Post-review processing: adjudication, promotion, and readiness gates
+
+For full research transparency, the workflow following submission of your completed annotations proceeds through explicit, verified gates:
+
+1. **Submission Validation & Merge:**
+   * The completed CSV is ingested via `python backend/scripts/import_annotations.py import --pilot data/drafts/pilot_examples.jsonl --csv <reviewer_csv> --output-jsonl <merged_draft_jsonl>`.
+   * The importer verifies that source texts are untouched, required fields and declarations are present, and candidate IDs match.
+   * Merged records strictly retain `annotation_status: "draft"` and `review_status: "not_reviewed"`. The import tool cannot authenticate review by itself.
+
+2. **Adjudication & Exclusion Documentation (Stage 3):**
+   * If a second annotator is available, disagreements in intended meaning, reference translation, or token labels are adjudicated.
+   * Any recommended exclusions (`exclude_recommendation: yes`) or label adjustments are explicitly reviewed by the project team.
+   * Exclusions and decisions are permanently recorded in `data/pilot_v0.1_manifest.json` under `exclusion_log`.
+
+3. **Formal Promotion (Stage 4):**
+   * Only records with verified human review are promoted to `annotation_status: "reviewed"`.
+   * Provenance fields (`reference_translation` and `intended_meaning`) are updated with the reviewer's pseudonymous ID, review date, and `review_status: "reviewed"`.
+   * Structural dataset validity is re-verified (`validate_dataset.py`).
+
+4. **Split Assignment & Evaluation Readiness Gate (Stage 5 & Stage 6):**
+   * Assigning splits and split groups does **not** automatically make a dataset ready.
+   * Full research evaluation remains strictly blocked until the independent evaluation-readiness checker passes with zero blockers:
+     ```powershell
+     python backend/scripts/check_evaluation_readiness.py <promoted_dataset.jsonl>
+     ```
+   * Until this checker exits 0, no empirical evaluation or translation quality score (BLEU-4 / chrF) may be executed or claimed.
+
+---
+
+*Reviewer Handoff Package prepared for BhashaBridge 2.0, Phase 28 (Finalized for Reviewer Delivery). This package is for independent reviewers only and does not constitute project documentation of a completed review.*
